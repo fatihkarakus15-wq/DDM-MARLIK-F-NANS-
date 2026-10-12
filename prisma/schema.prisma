@@ -1,0 +1,440 @@
+// Ofis Finans — Prisma şeması (PostgreSQL)
+// Tablolar uygulamanın ilk açılışında /kurulum ekranından oluşturulur (lib/migrations.ts); `prisma db push` gerekmez.
+// Şemayı değiştirirsen src/lib/migrations.ts'e yeni bir göç ekle (bkz. README "Şema değişikliği").
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["relationJoins"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL") // Supabase bağlantı havuzu (pooler, 6543) ya da herhangi bir PostgreSQL
+}
+
+// ─────────────────────────────────────────
+// KULLANICI
+// ─────────────────────────────────────────
+
+model AppUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  passwordHash String
+  epoch        Int      @default(0) // Artınca bu kullanıcının bütün oturumları kapanır
+  createdAt    DateTime @default(now())
+
+  @@map("app_users")
+}
+
+// ─────────────────────────────────────────
+// FİNANS: defterler (varsayılan: Mimarlık Ofisi; Ayarlar'dan yenisi eklenir)
+// Tutarlar TL ya da hesabın para biriminde; Float, kuruşa yuvarlanır (lib/finance/money.ts)
+// ─────────────────────────────────────────
+
+// Defter: hesaplar, projeler, kalemler, cariler ve hareketler bir deftere aittir
+model FinLedger {
+  id        String   @id @default(cuid())
+  slug      String   @unique // "mimarlik", "dolap-burada"
+  name      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  accounts     FinAccount[]
+  categories   FinCategory[]
+  contacts     FinContact[]
+  projects     FinProject[]
+  transactions FinTransaction[]
+  recurrings   FinRecurring[]
+  cheques      FinCheque[]
+  rules        FinRule[]
+  investments  FinInvestment[]
+
+  @@map("fin_ledgers")
+}
+
+// Banka, kasa, kredi kartı, POS bakiyesi. Bakiye = açılış + gerçekleşen hareketler (lib/finance/balances.ts)
+model FinAccount {
+  id             String         @id @default(cuid())
+  ledgerId       String
+  name           String
+  kind           FinAccountKind @default(BANK)
+  currency       String         @default("TRY") // TRY, USD, EUR, GBP
+  bankName       String?
+  iban           String?
+  openingBalance Float          @default(0) // Kredi kartında borç eksi yazılır
+  openingDate    DateTime       @default(now()) // Bu günden önceki hareketler bakiyeye girmez
+  creditLimit    Float? // Kredi kartı limiti
+  statementDay   Int? // Kart hesap kesim günü (1–31)
+  dueDay         Int? // Kart son ödeme günü (1–31)
+  isActive       Boolean        @default(true)
+  sortOrder      Int            @default(0)
+  note           String?
+  createdAt      DateTime       @default(now())
+
+  ledger       FinLedger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  transactions FinTransaction[] @relation("FinTxAccount")
+  incoming     FinTransaction[] @relation("FinTxToAccount")
+  cheques      FinCheque[]
+
+  @@index([ledgerId])
+  @@map("fin_accounts")
+}
+
+enum FinAccountKind {
+  BANK // Vadesiz / vadeli banka hesabı
+  CASH // Kasa (nakit)
+  CREDIT_CARD // Kredi kartı: bakiye borçtur
+  POS // POS / sanal pos (PayTR) bekleyen bakiye
+  OTHER
+}
+
+// Gelir / gider kalemi; en çok iki seviye (grup › kalem): Malzeme › Boya
+model FinCategory {
+  id        String          @id @default(cuid())
+  ledgerId  String
+  name      String
+  kind      FinCategoryKind
+  parentId  String?
+  sortOrder Int             @default(0)
+  isActive  Boolean         @default(true)
+
+  ledger       FinLedger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  parent       FinCategory?     @relation("FinCategoryTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children     FinCategory[]    @relation("FinCategoryTree")
+  transactions FinTransaction[]
+  budgetLines  FinBudgetLine[]
+  recurrings   FinRecurring[]
+  rules        FinRule[]
+
+  @@index([ledgerId, kind])
+  @@map("fin_categories")
+}
+
+enum FinCategoryKind {
+  INCOME
+  EXPENSE
+}
+
+// Cari hesap: müşteri, tedarikçi, taşeron, personel. Bakiye = açılış + açık (vadeli) hareketler
+model FinContact {
+  id             String         @id @default(cuid())
+  ledgerId       String
+  name           String
+  kind           FinContactKind @default(CUSTOMER)
+  taxNo          String?
+  taxOffice      String?
+  phone          String?
+  email          String?
+  address        String?
+  note           String?
+  openingBalance Float          @default(0) // + bize borçlu (alacak), − biz borçluyuz
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+
+  ledger       FinLedger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  projects     FinProject[]
+  transactions FinTransaction[]
+  recurrings   FinRecurring[]
+  cheques      FinCheque[]
+  rules        FinRule[]
+
+  @@index([ledgerId, kind])
+  @@map("fin_contacts")
+}
+
+enum FinContactKind {
+  CUSTOMER
+  SUPPLIER
+  SUBCONTRACTOR // Taşeron / usta
+  EMPLOYEE
+  OTHER
+}
+
+// Proje (maliyet merkezi): her gelir ve gider bir projeye bağlanabilir
+model FinProject {
+  id             String           @id @default(cuid())
+  ledgerId       String
+  code           String? // Ör. "2026-014"
+  name           String
+  clientId       String?
+  status         FinProjectStatus @default(ACTIVE)
+  startDate      DateTime?
+  endDate        DateTime?
+  contractAmount Float? // Sözleşme bedeli (KDV hariç, TL)
+  note           String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  ledger       FinLedger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  client       FinContact?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  budgetLines  FinBudgetLine[]
+  transactions FinTransaction[]
+  recurrings   FinRecurring[]
+  cheques      FinCheque[]
+  rules        FinRule[]
+
+  @@unique([ledgerId, code])
+  @@index([ledgerId, status])
+  @@map("fin_projects")
+}
+
+enum FinProjectStatus {
+  LEAD // Teklif aşamasında
+  ACTIVE
+  ON_HOLD
+  DONE
+  CANCELLED
+}
+
+// Proje maliyet bütçesi: kalem başına (KDV hariç, TL)
+model FinBudgetLine {
+  id         String @id @default(cuid())
+  projectId  String
+  categoryId String
+  amountTL   Float
+
+  project  FinProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  category FinCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, categoryId])
+  @@map("fin_budget_lines")
+}
+
+// Hareket: gelir, gider ya da hesaplar arası virman.
+// PLANNED = vadeli alacak / borç / planlı ödeme (nakit akışı tahminine girer, cari bakiyeyi oluşturur);
+// DONE = gerçekleşti (hesap bakiyesini değiştirir). Ödenince PLANNED → DONE olur.
+model FinTransaction {
+  id                String      @id @default(cuid())
+  ledgerId          String
+  type              FinTxType
+  status            FinTxStatus @default(DONE)
+  date              DateTime // DONE: paranın hareket ettiği gün · PLANNED: vade günü
+  docDate           DateTime? // Fatura / belge tarihi (gider dağılımı bu tarihe göre yapılabilir)
+  docNo             String?
+  title             String
+  note              String?
+  amount            Float // > 0, KDV dahil, `currency` cinsinden
+  currency          String      @default("TRY")
+  fxRate            Float       @default(1) // 1 birim = ? TL (hareket anındaki kur)
+  amountTRY         Float // amount × fxRate
+  vatRate           Float? // %
+  vatAmount         Float       @default(0) // amount içindeki KDV
+  withholdingAmount Float       @default(0) // Stopaj (bilgi; amount'a dokunmaz)
+  accountId         String? // DONE'da zorunlu
+  toAccountId       String? // Virman: hedef hesap
+  toAmount          Float? // Virman: hedef hesaba geçen tutar (para birimi farklıysa)
+  categoryId        String?
+  projectId         String?
+  contactId         String?
+  recurringId       String?
+  externalRef       String? // Tekrar kaydı önler: "rec:<id>:<gün>", "order:<id>", "imp:<özet>"
+  createdBy         String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  ledger      FinLedger       @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  account     FinAccount?     @relation("FinTxAccount", fields: [accountId], references: [id], onDelete: SetNull)
+  toAccount   FinAccount?     @relation("FinTxToAccount", fields: [toAccountId], references: [id], onDelete: SetNull)
+  category    FinCategory?    @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  project     FinProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contact     FinContact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  recurring   FinRecurring?   @relation(fields: [recurringId], references: [id], onDelete: SetNull)
+  attachments FinAttachment[]
+  cheque      FinCheque?
+
+  @@unique([ledgerId, externalRef])
+  @@index([ledgerId, status, date])
+  @@index([accountId])
+  @@index([projectId])
+  @@index([contactId])
+  @@index([categoryId])
+  @@map("fin_transactions")
+}
+
+enum FinTxType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+enum FinTxStatus {
+  PLANNED
+  DONE
+}
+
+// Fiş / fatura / dekont dosyası (PDF ya da fotoğraf, ≤ 5 MB)
+model FinAttachment {
+  id            String   @id @default(cuid())
+  transactionId String
+  name          String
+  mime          String
+  size          Int
+  data          Bytes
+  createdAt     DateTime @default(now())
+
+  transaction FinTransaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@index([transactionId])
+  @@map("fin_attachments")
+}
+
+// Tekrarlayan ödeme / tahsilat şablonu (kira, abonelik, maaş…): ileri tarihli PLANNED hareketler üretir
+model FinRecurring {
+  id         String       @id @default(cuid())
+  ledgerId   String
+  title      String
+  type       FinTxType // INCOME ya da EXPENSE
+  amount     Float
+  currency   String       @default("TRY")
+  frequency  FinFrequency @default(MONTHLY)
+  startDate  DateTime // İlk vade; sonrakiler aynı günde (ay sonuna taşar)
+  endDate    DateTime?
+  vatRate    Float?
+  accountId  String?
+  categoryId String?
+  projectId  String?
+  contactId  String?
+  note       String?
+  skipDays   String[]     @default([]) // Atlanan vadeler ("2026-11-05"): silinen vade yeniden üretilmesin
+  isActive   Boolean      @default(true)
+  createdAt  DateTime     @default(now())
+
+  ledger       FinLedger        @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  category     FinCategory?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  project      FinProject?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contact      FinContact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  transactions FinTransaction[]
+
+  @@index([ledgerId, isActive])
+  @@map("fin_recurrings")
+}
+
+enum FinFrequency {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// Çek / senet portföyü. Tahsil / ödeme anında gerçekleşen hareket (transactionId) oluşur.
+model FinCheque {
+  id            String             @id @default(cuid())
+  ledgerId      String
+  kind          FinChequeKind      @default(CHECK)
+  direction     FinChequeDirection // RECEIVED: aldığımız · ISSUED: verdiğimiz
+  number        String?
+  bankName      String?
+  contactId     String? // Keşideci (aldığımız) ya da lehtar (verdiğimiz)
+  projectId     String?
+  amount        Float
+  currency      String             @default("TRY")
+  issueDate     DateTime?
+  dueDate       DateTime
+  status        FinChequeStatus    @default(OPEN)
+  accountId     String? // Tahsil edileceği / ödeneceği hesap
+  settledAt     DateTime?
+  transactionId String?            @unique
+  note          String?
+  createdAt     DateTime           @default(now())
+
+  ledger      FinLedger       @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  contact     FinContact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  project     FinProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  account     FinAccount?     @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  transaction FinTransaction? @relation(fields: [transactionId], references: [id], onDelete: SetNull)
+
+  @@index([ledgerId, status, dueDate])
+  @@map("fin_cheques")
+}
+
+enum FinChequeKind {
+  CHECK
+  NOTE // Senet
+}
+
+enum FinChequeDirection {
+  RECEIVED
+  ISSUED
+}
+
+enum FinChequeStatus {
+  OPEN // Portföyde / vadesi bekleniyor
+  DEPOSITED // Tahsile verildi
+  ENDORSED // Ciro edildi (nakit hareketi oluşmaz)
+  SETTLED // Tahsil edildi / ödendi
+  BOUNCED // Karşılıksız
+  CANCELLED
+}
+
+// Ekstre içe aktarma kuralı: açıklama metni eşleşirse kalem / proje / cari atanır
+model FinRule {
+  id         String  @id @default(cuid())
+  ledgerId   String
+  match      String // Açıklamada geçen metin (büyük/küçük harf ve Türkçe karakter duyarsız)
+  categoryId String?
+  projectId  String?
+  contactId  String?
+  priority   Int     @default(0)
+
+  ledger   FinLedger    @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  category FinCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  project  FinProject?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  contact  FinContact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
+
+  @@index([ledgerId])
+  @@map("fin_rules")
+}
+
+// Yatırım pozisyonu (döviz, altın): anlık değer FinRate'ten hesaplanır
+model FinInvestment {
+  id          String              @id @default(cuid())
+  ledgerId    String
+  asset       String // FinRate.code: USD, EUR, GBP, GRAM_ALTIN, CEYREK, YARIM, TAM, ATA…
+  quantity    Float // Adet / gram / birim
+  unitCost    Float // Alış maliyeti: birim başına TL
+  boughtAt    DateTime
+  status      FinInvestmentStatus @default(OPEN)
+  soldAt      DateTime?
+  soldPrice   Float? // Satış: birim başına TL
+  targetPrice Float? // Hedef fiyat: ulaşılınca rozet gösterilir
+  note        String?
+  createdAt   DateTime            @default(now())
+
+  ledger FinLedger @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+
+  @@index([ledgerId, status])
+  @@map("fin_investments")
+}
+
+enum FinInvestmentStatus {
+  OPEN
+  SOLD
+}
+
+// Son bilinen kur / fiyat (TL karşılığı). Kaynak: Harem Altın, yedek TCMB, ya da elle girilen
+model FinRate {
+  code      String    @id // USD, EUR, GBP, GRAM_ALTIN, CEYREK, YARIM, TAM, ATA, ONS
+  name      String
+  buy       Float // Alış (bayinin bizden aldığı fiyat; değerleme bununla)
+  sell      Float // Satış
+  source    String // "haremaltin" | "tcmb" | "manual"
+  fetchedAt DateTime // Çekildiği an
+  sourceAt  DateTime? // Kaynağın bildirdiği an
+
+  @@map("fin_rates")
+}
+
+// Günlük kapanış: grafik için (gün içinde son değer, en düşük / en yüksek alış)
+model FinRateDaily {
+  code String
+  day  DateTime @db.Date
+  buy  Float
+  sell Float
+  low  Float
+  high Float
+
+  @@id([code, day])
+  @@map("fin_rate_daily")
+}
