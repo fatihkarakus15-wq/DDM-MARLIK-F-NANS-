@@ -11,10 +11,13 @@ export default async function Kurulum() {
     let state: Awaited<ReturnType<typeof dbState>>;
     try {
         state = await dbState();
-    } catch {
+    } catch (err) {
+        // Bağlantı bilgisi sızmasın: adresler ve şifre benzeri kısımlar silinir
+        const reason = (err instanceof Error ? err.message : String(err)).split("\n").map(l => l.trim()).filter(Boolean).pop()?.replace(/\S+:\/\/\S+/g, "[adres]").slice(0, 160) ?? "bilinmeyen hata";
         return (
             <main className="gate"><div className="gate-card">
                 <h1>Veritabanına bağlanılamadı</h1>
+                <p className="adm-flash error">Neden: {reason}</p>
                 <p>Vercel proje ayarlarında <code>DATABASE_URL</code> değişkenini kontrol edin (Supabase &quot;Connection pooling&quot; bağlantı adresi) ve yeniden dağıtın.</p>
             </div></main>
         );

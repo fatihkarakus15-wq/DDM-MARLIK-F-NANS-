@@ -7,7 +7,9 @@ import { dbState } from "@/lib/db-state";
 import { getUser } from "@/lib/auth";
 
 export async function requireFinancePage() {
-    if ((await dbState()).state !== "ok") redirect("/kurulum");
+    let ready = false;
+    try { ready = (await dbState()).state === "ok"; } catch { /* bağlantı hatası: kurulum ekranı nedenini gösterir */ }
+    if (!ready) redirect("/kurulum");
     const user = await getUser();
     if (!user) redirect("/giris");
     return user;
