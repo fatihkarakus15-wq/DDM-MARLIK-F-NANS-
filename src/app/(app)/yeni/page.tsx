@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Yeni hareket: varsayılan "hızlı gider" (tutar, açıklama, kalem, proje, hesap, fiş fotoğrafı); ayrıntılı form gelir, vade ve virman için. */
 export default async function Yeni({ searchParams }: { searchParams: Promise<{ ayrintili?: string; tip?: string }> }) {
-    await requireFinancePage();
+    const me = await requireFinancePage();
     const sp = await searchParams;
     const { ledger } = await activeLedger();
     const rates = await ensureFreshRates(600);
@@ -32,7 +32,7 @@ export default async function Yeni({ searchParams }: { searchParams: Promise<{ a
             <section className="adm-card"><div className="adm-card-body">
                 <TxForm
                     key={detailed ? "full" : "quick"} mode={detailed ? "full" : "quick"} ledgerId={ledger.id} today={todayYmd()}
-                    accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates}
+                    accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} people={opts.people} meId={me.id} rates={opts.rates}
                     initial={{ type: sp.tip === "gelir" ? "INCOME" : "EXPENSE", status: "DONE" }}
                 />
             </div></section>

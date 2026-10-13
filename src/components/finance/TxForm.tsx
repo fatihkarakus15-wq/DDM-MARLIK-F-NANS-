@@ -12,13 +12,13 @@ interface Opt { id: string; label: string }
 export interface TxInitial {
     id?: string; type?: "INCOME" | "EXPENSE" | "TRANSFER"; status?: "DONE" | "PLANNED"; date?: string; docDate?: string; docNo?: string; title?: string; note?: string;
     amount?: number; currency?: string; fxRate?: number; vatRate?: number | null; vatAmount?: number; withholdingAmount?: number;
-    accountId?: string | null; toAccountId?: string | null; toAmount?: number | null; categoryId?: string | null; projectId?: string | null; contactId?: string | null; rebillAmount?: number | null;
+    accountId?: string | null; toAccountId?: string | null; toAmount?: number | null; categoryId?: string | null; projectId?: string | null; contactId?: string | null; rebillAmount?: number | null; spenderId?: string | null;
 }
 interface Props {
     ledgerId: string; today: string;
     accounts: (Opt & { currency: string })[];
     categories: (Opt & { kind: "INCOME" | "EXPENSE" })[];
-    projects: Opt[]; contacts: Opt[];
+    projects: Opt[]; contacts: Opt[]; people?: Opt[]; meId?: string;
     rates: Record<string, number>;
     initial?: TxInitial; mode?: "full" | "quick";
     onDone?: () => void;
@@ -30,7 +30,7 @@ const toNumber = (s: string) => {
 };
 const fmtInput = (n: number | null | undefined) => (n == null ? "" : String(n).replace(".", ","));
 
-export default function TxForm({ ledgerId, today, accounts, categories, projects, contacts, rates, initial = {}, mode = "full", onDone }: Props) {
+export default function TxForm({ ledgerId, today, accounts, categories, projects, contacts, people = [], meId, rates, initial = {}, mode = "full", onDone }: Props) {
     const router = useRouter();
     const quick = mode === "quick";
     const editing = !!initial.id;
@@ -129,6 +129,10 @@ export default function TxForm({ ledgerId, today, accounts, categories, projects
                             <select name="categoryId" defaultValue={initial.categoryId ?? ""} key={type}><option value="">— kalemsiz —</option>{cats.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
                         <label className="adm-field"><span className="adm-label">Proje</span>
                             <select name="projectId" defaultValue={initial.projectId ?? ""}><option value="">— projesiz —</option>{projects.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
+                        {type === "EXPENSE" && people.length > 0 && (
+                            <label className="adm-field"><span className="adm-label">Harcamayı yapan</span>
+                                <select name="spenderId" defaultValue={initial.spenderId ?? meId ?? people[0].id}>{people.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
+                        )}
                         {type === "EXPENSE" && (
                             <label className="adm-field"><span className="adm-label">Müşteriden ekstra alınacak (₺, projeli giderde)</span>
                                 <input name="rebillAmount" inputMode="decimal" defaultValue={initial.rebillAmount ? String(initial.rebillAmount).replace(".", ",") : ""} placeholder="Yoksa boş bırakın" autoComplete="off" /></label>

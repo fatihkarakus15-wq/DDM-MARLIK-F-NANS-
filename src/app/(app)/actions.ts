@@ -434,6 +434,21 @@ export async function deleteAttachment(_: ActionState, fd: FormData): Promise<Ac
 
 // ── Tekrarlayan ödemeler ────────────────────────────────
 
+/** Aylık maaş gideri: kişi adı + tutar + maaş günü; her ay vadeli "Maaş" gideri üretir */
+export async function addSalary(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const person = str(fd, "person", "Kişi").slice(0, 80);
+        const amount = r2(num(fd, "amount", "Maaş tutarı"));
+        if (!(amount > 0)) throw new FormError("Maaş tutarı sıfırdan büyük olmalı.");
+        const cat = await prisma.finCategory.findFirst({ where: { ledgerId: ledger.id, kind: "EXPENSE", name: "Maaş" }, select: { id: true } });
+        await prisma.finRecurring.create({ data: { ledgerId: ledger.id, title: `Maaş · ${person}`, type: "EXPENSE", amount, currency: "TRY", frequency: "MONTHLY", startDate: day(fd, "startDate", "Maaş günü"), categoryId: cat?.id ?? null } });
+        const made = await generateRecurring(ledger.id, undefined, FIRST_LOOKBACK_DAYS);
+        refresh();
+        return `${person} maaşı eklendi; ${made} vade üretildi.`;
+    });
+}
+
 export async function saveRecurring(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
         const ledger = await ledgerOf(fd);

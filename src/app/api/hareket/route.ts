@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
     }
     const form = await request.formData().catch(() => null);
     if (!form) return fail("Form okunamadı");
+    // Yeni giderde harcayan belirtilmediyse giriş yapan kişidir
+    if (!form.get("id") && !form.get("spenderId")) form.set("spenderId", admin.id);
     try {
         const id = await saveTransaction(form, admin.name ?? admin.email);
         revalidatePath("/", "layout");

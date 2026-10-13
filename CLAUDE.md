@@ -36,5 +36,9 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 - Alt çubukta **Ofis** sekmesi (`/ofis`): sabit ofis giderleri (kira, maaş, fatura, abonelik) = `FinRecurring` (EXPENSE, projesiz); aylık/yıllık toplam, bu ay ödenen/ödenecek, "Ödendi işle". Hareketler "Daha fazla"ya taşındı.
 - Projede **İlave işler** (`FinProjectExtra`: sonradan gelen iş + tutar, iş bedeline eklenir) ve **Müşteriden ekstra alınacaklar**: harcama girerken (tuş takımı ya da TxForm) "Müşteriden ekstra alınacak" → `FinTransaction.rebillAmount`; projede listelenir, "Tahsilat planına ekle" (`planRebill`) vadeli gelir üretir (`rebillPlanned`). Tahsilat özeti: iş bedeli + ilaveler + ekstralar − alınan − planlı = plana girilmemiş. Göç `004-ilave-isler-ekstra-alinacak`: yayından sonra /kurulum "Veritabanını güncelle".
 
+## Kim ne harcadı, maaşlar (2026-10-13)
+- Her gider `FinTransaction.spenderId` (AppUser.id) taşır: yeni giderde varsayılan giriş yapan kişi (`/api/hareket`), tuş takımında "Harcayan" düğmeleriyle, TxForm'da "Harcamayı yapan" seçiminden değişir. Proje sayfasında **Kim ne harcadı**: kişi başı toplam, eşit paylaşım ve "kim kime ne kadar ödemeli" (`#kimharcadi`); kimin yaptığı belirtilmemiş eski harcamalar hesaba girmez. Göç `005-harcayan-kisi`.
+- Ofis sayfasında **Maaşlar** (`addSalary`): kişi adı + aylık maaş → "Maaş · Kişi" aylık tekrarlayan gider (kalem "Maaş"); sabit giderlerden ayrı listelenir.
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.

@@ -30,6 +30,7 @@ export async function loadQuick(ledgerId: string, projectId: string) {
     const spentBy = new Map(costs.compare.map(c => [c.categoryId, c.actual]));
     return {
         accounts: opts.accounts,
+        people: opts.people,
         categories: expenseOpts.map(c => ({ id: c.id, label: c.label })),
         favorites: picked.slice(0, 8).map(c => ({ id: c.id, label: leafLabel(c.label), spent: spentBy.get(c.id) })),
         recent,

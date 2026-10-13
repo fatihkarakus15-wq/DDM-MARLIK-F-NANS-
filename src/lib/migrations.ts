@@ -36,4 +36,8 @@ export const MIGRATIONS: Migration[] = [
             `CREATE INDEX IF NOT EXISTS "fin_project_extras_projectId_idx" ON "fin_project_extras"("projectId")`,
         ],
     },
+    {
+        id: "005-harcayan-kisi",
+        statements: [`ALTER TABLE "fin_transactions" ADD COLUMN IF NOT EXISTS "spenderId" TEXT`],
+    },
 ];

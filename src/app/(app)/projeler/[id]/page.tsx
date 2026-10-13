@@ -20,7 +20,7 @@ import { addCollection, addExtra, addProjectItem, deleteExtra, deleteProject, de
 export const dynamic = "force-dynamic";
 
 export default async function ProjeDetay({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kalem?: string }> }) {
-    await requireFinancePage();
+    const me = await requireFinancePage();
     const { id } = await params;
     const { kalem } = await searchParams;
     const { ledger } = await activeLedger();
@@ -31,7 +31,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
     ]);
     if (!project) notFound();
-    const [extras, rebills, incomes, overview, costs, txs, opts] = await Promise.all([
+    const [spent, extras, rebills, incomes, overview, costs, txs, opts] = await Promise.all([
+        prisma.finTransaction.groupBy({ by: ["spenderId"], where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE" }, _sum: { amountTRY: true }, _count: true }),
         prisma.finProjectExtra.findMany({ where: { projectId: id }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
         prisma.finTransaction.findMany({ where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE", rebillAmount: { gt: 0 } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], select: { id: true, title: true, amount: true, currency: true, date: true, rebillAmount: true, rebillPlanned: true } }),
         prisma.finTransaction.findMany({ where: { ledgerId: ledger.id, projectId: id, type: "INCOME" }, orderBy: [{ date: "asc" }, { createdAt: "asc" }], select: { id: true, title: true, amount: true, currency: true, date: true, status: true } }),
@@ -59,6 +60,16 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     const spentBy = new Map(costs.compare.map(c => [c.categoryId, c.actual]));
     const favorites = picked.slice(0, 8).map(c => ({ id: c.id, label: leafLabel(c.label), spent: spentBy.get(c.id) }));
     const status = PROJECT_STATUS[project.status];
+    // Kim ne harcadı: kişi başı toplam, eşit paylaşım ve "kim kime ne kadar ödemeli"
+    const who = opts.people.map(p => ({ ...p, total: spent.find(x => x.spenderId === p.id)?._sum.amountTRY ?? 0, count: spent.find(x => x.spenderId === p.id)?._count ?? 0 }));
+    const unassigned = spent.filter(x => !x.spenderId || !opts.people.some(p => p.id === x.spenderId)).reduce((a, x) => ({ total: a.total + (x._sum.amountTRY ?? 0), count: a.count + x._count }), { total: 0, count: 0 });
+    const whoTotal = who.reduce((a, w) => a + w.total, 0);
+    const share = who.length ? whoTotal / who.length : 0;
+    const debtors = who.map(w => ({ ...w, bal: w.total - share })).filter(w => w.bal < -0.5).sort((a, b) => a.bal - b.bal);
+    const creditors = who.map(w => ({ ...w, bal: w.total - share })).filter(w => w.bal > 0.5).sort((a, b) => b.bal - a.bal);
+    const settle: { from: string; to: string; amount: number }[] = [];
+    { const d = debtors.map(x => ({ ...x, left: -x.bal })), c = creditors.map(x => ({ ...x, left: x.bal })); let i = 0, j = 0;
+      while (i < d.length && j < c.length) { const a = Math.min(d[i].left, c[j].left); settle.push({ from: d[i].label, to: c[j].label, amount: a }); d[i].left -= a; c[j].left -= a; if (d[i].left < 0.5) i++; if (c[j].left < 0.5) j++; } }
     const todayDay = todayYmd();
     const received = incomes.filter(t => t.status === "DONE").reduce((a, t) => a + t.amount, 0);
     const pending = incomes.filter(t => t.status === "PLANNED").reduce((a, t) => a + t.amount, 0);
@@ -86,7 +97,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
 
             <div id="ekle">
                 {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
+                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} people={opts.people} meId={me.id} key={kalem ?? "x"} />
             </div>
 
             <h2 className="sm-h">Son harcamalar <span>· toplam {tl0(p.expense)}</span></h2>
@@ -96,6 +107,27 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                         <li key={t.id}><Link href={`/hareketler/${t.id}`}><span>{t.title}</span><small>{fmtDay(t.date)} · {t.category?.name ?? "kalemsiz"}{t.status === "PLANNED" ? " · vadeli" : ""}</small></Link><b>{money(t.amount, t.currency)}</b></li>
                     ))}
                 </ul>
+            )}
+
+            {who.length > 1 && (
+                <section className="adm-card" id="kimharcadi">
+                    <div className="adm-card-head"><h2 className="adm-card-title">Kim ne harcadı</h2><span className="adm-card-note">Toplam {tl0(whoTotal + unassigned.total)}</span></div>
+                    <ul className="pay-list">
+                        {who.map(w => (
+                            <li key={w.id}>
+                                <div className="pay-row"><span><b>{w.label}</b><small>{w.count} harcama{whoTotal > 0 ? ` · %${Math.round((w.total / whoTotal) * 100)}` : ""}</small></span><span className="pay-amt"><b>{tl0(w.total)}</b></span></div>
+                                <div className="who-bar"><span style={{ width: `${whoTotal > 0 ? (w.total / whoTotal) * 100 : 0}%` }} /></div>
+                            </li>
+                        ))}
+                    </ul>
+                    {whoTotal > 0 && (
+                        <div className="who-settle">
+                            Eşit paylaşımda kişi başı <b>{tl0(share)}</b>.{" "}
+                            {settle.length === 0 ? "Hesap denk, kimsenin kimseye borcu yok." : settle.map((x, k) => <span key={k}><b>{x.from}</b>, <b>{x.to}</b> kişisine <b>{tl0(x.amount)}</b> ödemeli. </span>)}
+                        </div>
+                    )}
+                    {unassigned.count > 0 && <p className="adm-help" style={{ padding: "0 14px 14px" }}>{unassigned.count} harcamada kimin yaptığı belirtilmemiş ({tl0(unassigned.total)}); hesaba katılmadı. Harcamayı açıp “Harcamayı yapan”ı seçebilirsiniz.</p>}
+                </section>
             )}
 
             <section className="adm-card" id="tahsilat">
@@ -325,7 +357,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
             <details className="adm-fold">
                 <summary>Gelir (tahsilat) ya da ayrıntılı hareket ekle</summary>
                 <div className="adm-card-body">
-                    <TxForm ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates} initial={{ type: "EXPENSE", projectId: id, contactId: undefined }} />
+                    <TxForm ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} people={opts.people} meId={me.id} rates={opts.rates} initial={{ type: "EXPENSE", projectId: id, contactId: undefined }} />
                 </div>
             </details>
 

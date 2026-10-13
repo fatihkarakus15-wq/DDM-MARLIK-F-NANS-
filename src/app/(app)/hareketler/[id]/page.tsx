@@ -18,7 +18,7 @@ import { deleteAttachment, deleteTransaction, settleAction } from "../../actions
 export const dynamic = "force-dynamic";
 
 export default async function HareketDetay({ params }: { params: Promise<{ id: string }> }) {
-    await requireFinancePage();
+    const me = await requireFinancePage();
     const { id } = await params;
     const { ledger } = await activeLedger();
     const tx = await prisma.finTransaction.findFirst({
@@ -77,10 +77,10 @@ export default async function HareketDetay({ params }: { params: Promise<{ id: s
                 <div className="adm-card-head"><h2 className="adm-card-title">Hareketi düzenle</h2><span className="adm-card-note">Kayıt: {tx.createdBy ?? "—"} · {dateTimeTR(tx.createdAt)}</span></div>
                 <div className="adm-card-body">
                     <TxForm
-                        ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates}
+                        ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} people={opts.people} meId={me.id} rates={opts.rates}
                         initial={{
                             id: tx.id, type: tx.type, status: tx.status, date: ymd(tx.date), docDate: tx.docDate ? ymd(tx.docDate) : undefined, docNo: tx.docNo ?? undefined, title: tx.title, note: tx.note ?? undefined,
-                            amount: tx.amount, currency: tx.currency, fxRate: tx.fxRate, vatRate: tx.vatRate, vatAmount: tx.vatAmount, withholdingAmount: tx.withholdingAmount, rebillAmount: tx.rebillAmount,
+                            amount: tx.amount, currency: tx.currency, fxRate: tx.fxRate, vatRate: tx.vatRate, vatAmount: tx.vatAmount, withholdingAmount: tx.withholdingAmount, rebillAmount: tx.rebillAmount, spenderId: tx.spenderId,
                             accountId: tx.accountId, toAccountId: tx.toAccountId, toAmount: tx.toAmount, categoryId: tx.categoryId, projectId: tx.projectId, contactId: tx.contactId,
                         }}
                     />

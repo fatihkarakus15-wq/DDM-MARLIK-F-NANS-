@@ -100,12 +100,16 @@ export async function parseTxForm(fd: FormData): Promise<ParsedTx> {
     const rebill = type === "EXPENSE" && projectId ? number(fd, "rebillAmount", "Müşteriden alınacak tutar") : null;
     const rebillAmount = rebill != null && rebill > 0 ? r2(rebill) : null;
 
+    // Harcamayı yapan kişi (kim ne harcadı): yalnızca gider; geçerli bir kullanıcı olmalı
+    let spenderId = type === "EXPENSE" ? opt(fd, "spenderId") : null;
+    if (spenderId && !(await prisma.appUser.findUnique({ where: { id: spenderId }, select: { id: true } }))) spenderId = null;
+
     return {
         id: opt(fd, "id"), ledgerId,
         data: {
             type, status, date, docDate, docNo: opt(fd, "docNo"), title, note: opt(fd, "note"),
             amount, currency, fxRate, amountTRY: r2(amount * fxRate), vatRate, vatAmount, withholdingAmount,
-            accountId, toAccountId, toAmount, categoryId, projectId, contactId, rebillAmount,
+            accountId, toAccountId, toAmount, categoryId, projectId, contactId, rebillAmount, spenderId,
         },
     };
 }

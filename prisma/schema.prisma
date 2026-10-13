@@ -263,6 +263,7 @@ model FinTransaction {
   withholdingAmount Float       @default(0) // Stopaj (bilgi; amount'a dokunmaz)
   rebillAmount      Float? // Gider için: müşteriden ekstra alınacak tutar (projeye yansıtılacak)
   rebillPlanned     Boolean     @default(false) // Ekstra tutar tahsilat planına eklendi
+  spenderId         String? // Harcamayı yapan kullanıcı (AppUser.id): kim ne harcadı
   accountId         String? // DONE'da zorunlu
   toAccountId       String? // Virman: hedef hesap
   toAmount          Float? // Virman: hedef hesaba geçen tutar (para birimi farklıysa)

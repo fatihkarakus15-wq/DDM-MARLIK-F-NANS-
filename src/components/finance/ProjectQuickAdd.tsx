@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 interface Opt { id: string; label: string }
 interface Fav extends Opt { spent?: number }
-interface Props { ledgerId: string; projectId: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string }
+interface Props { ledgerId: string; projectId: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string; people?: Opt[]; meId?: string }
 
 const KEY = "ofis-finans:son-hesap";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "⌫"];
@@ -22,13 +22,14 @@ function show(raw: string) {
     return d === undefined ? head : `${head},${d}`;
 }
 
-export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites, initialCategoryId }: Props) {
+export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites, initialCategoryId, people = [], meId }: Props) {
     const router = useRouter();
     const [raw, setRaw] = useState("");
     const [categoryId, setCategoryId] = useState(initialCategoryId ?? "");
     const [note, setNote] = useState("");
     const [date, setDate] = useState(today);
     const [file, setFile] = useState<File | null>(null);
+    const [spender, setSpender] = useState(() => { try { const v = localStorage.getItem("ofis-finans:harcayan"); if (v && people.some(p => p.id === v)) return v; } catch { /* depolama kapalı */ } return meId ?? people[0]?.id ?? ""; });
     const [rebill, setRebill] = useState(false);
     const [rebillAmt, setRebillAmt] = useState("");
     const [accountId, setAccountId] = useState(() => {
@@ -59,13 +60,14 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
         fd.set("accountId", accountId); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
         fd.set("title", note.trim() || label(categoryId) || "Harcama");
         if (file) fd.set("files", file);
+        if (spender) fd.set("spenderId", spender);
         if (rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
         setBusy(true); setMsg(null);
         try {
             const res = await fetch("/api/hareket", { method: "POST", body: fd });
             const json = await res.json().catch(() => null);
             if (!res.ok || !json?.success) { setMsg({ ok: false, text: json?.error ?? "Kaydedilemedi." }); return; }
-            try { localStorage.setItem(KEY, accountId); } catch { /* depolama kapalı */ }
+            try { localStorage.setItem(KEY, accountId); if (spender) localStorage.setItem("ofis-finans:harcayan", spender); } catch { /* depolama kapalı */ }
             setMsg({ ok: true, text: `${show(raw)} ₺ kaydedildi${categoryId ? ` · ${label(categoryId)}` : ""}` });
             setRaw(""); setNote(""); setFile(null); setRebill(false); setRebillAmt(""); setCategoryId(initialCategoryId ?? "");
             router.refresh();
@@ -103,6 +105,13 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             <div className="sm-keys" role="group" aria-label="Rakamlar">
                 {KEYS.map(k => <button key={k} type="button" onClick={() => press(k)} aria-label={k === "⌫" ? "Sil" : k}>{k}</button>)}
             </div>
+
+            {people.length > 1 && (
+                <div className="sm-who" role="group" aria-label="Harcamayı yapan">
+                    <span>Harcayan</span>
+                    {people.map(p => <button key={p.id} type="button" className={`sm-who-btn${spender === p.id ? " on" : ""}`} aria-pressed={spender === p.id} onClick={() => setSpender(p.id)}>{p.label}</button>)}
+                </div>
+            )}
 
             <label className="sm-rebill"><input type="checkbox" checked={rebill} onChange={e => setRebill(e.target.checked)} /> Müşteriden ekstra alınacak</label>
             {rebill && (
