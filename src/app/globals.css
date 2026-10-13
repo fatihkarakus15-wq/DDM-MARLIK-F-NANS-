@@ -381,3 +381,11 @@ pre.fin-probe { white-space: pre-wrap; word-break: break-all; font-size: 0.72rem
 .sm-h { font: 700 1rem var(--font-display, inherit); margin: 4px 2px 8px; }
 .sm-h span { color: var(--muted); font-weight: 500; font-size: .85rem; }
 .sm-recent a { display: grid; min-width: 0; }
+
+/* Yükleniyor iskeleti */
+.skel { display: grid; gap: 12px; }
+.skel-bar, .skel-box { border-radius: 12px; background: linear-gradient(90deg, #ebe6db 25%, #f3efe6 50%, #ebe6db 75%); background-size: 200% 100%; animation: skel 1.2s linear infinite; }
+.skel-bar { height: 28px; } .skel-bar.w40 { width: 40%; }
+.skel-box { height: 92px; } .skel-box.short { height: 60px; }
+@keyframes skel { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel-bar, .skel-box { animation: none; } }

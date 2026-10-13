@@ -12,7 +12,7 @@ export async function GET() {
     } catch {
         return NextResponse.json({ success: false, error: "Yönetici girişi gerekli" }, { status: 401 });
     }
-    const rates = await ensureFreshRates(20);
+    const rates = await ensureFreshRates(20, true);
     return NextResponse.json({
         success: true,
         rates: Object.values(rates).map(toDTO),

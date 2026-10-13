@@ -8,6 +8,7 @@
  * Son bilinen değer FinRate'te kalır; kaynak çalışmazsa sayfalar eski değeri "güncel değil" notuyla gösterir.
  * Değerleme "alış" fiyatıyla yapılır (bozdurunca bayinin bize ödeyeceği fiyat).
  */
+import { after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { todayYmd } from "./dates";
 
@@ -200,12 +201,17 @@ export function refreshRates(): Promise<RefreshResult> {
 }
 
 /** Fiyatlar `maxAgeSec`'ten eskiyse yeniler (hata atmaz); güncel kur haritasını döndürür */
-export async function ensureFreshRates(maxAgeSec = 60): Promise<RateMap> {
+export async function ensureFreshRates(maxAgeSec = 60, wait = false): Promise<RateMap> {
     let rates = await loadRates();
     const newest = Math.max(0, ...Object.values(rates).map(r => r.fetchedAt.getTime()));
     if (Date.now() - newest > maxAgeSec * 1000 && Date.now() - lastFailAt > RETRY_AFTER_MS) {
-        const r = await refreshRates().catch(() => null);
-        if (r?.ok) rates = await loadRates();
+        // Sayfa dış kaynağı beklemesin: eski kurla açılır, yenileme yanıttan sonra yapılır (hiç kur yoksa beklenir)
+        if (wait || newest === 0) {
+            const r = await refreshRates().catch(() => null);
+            if (r?.ok) rates = await loadRates();
+        } else {
+            try { after(() => refreshRates().catch(() => null)); } catch { /* istek dışı çağrı */ }
+        }
     }
     return rates;
 }

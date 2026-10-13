@@ -24,9 +24,13 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     const { id } = await params;
     const { kalem } = await searchParams;
     const { ledger } = await activeLedger();
-    const project = await prisma.finProject.findFirst({ where: { id, ledgerId: ledger.id }, include: { client: { select: { id: true, name: true } } } });
+    // Bağımsız sorgular birlikte: sırayla beklemek her biri için bir ağ turu ekler
+    const [project, rates, used] = await Promise.all([
+        prisma.finProject.findFirst({ where: { id, ledgerId: ledger.id }, include: { client: { select: { id: true, name: true } } } }),
+        ensureFreshRates(600),
+        prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
+    ]);
     if (!project) notFound();
-    const rates = await ensureFreshRates(600);
     const [overview, costs, txs, opts] = await Promise.all([
         projectsOverview(ledger.id),
         projectCosts(ledger.id, id),
@@ -37,7 +41,6 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         formOptions(ledger.id, rates),
     ]);
     const p = overview.find(x => x.id === id)!;
-    const used = await prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 });
     const expenseOpts = opts.categories.filter(c => c.kind === "EXPENSE");
     const favIds = used.map(u => u.categoryId!).filter(cid => expenseOpts.some(c => c.id === cid));
     const leafLabel = (l: string) => l.split(" › ").pop()!;
