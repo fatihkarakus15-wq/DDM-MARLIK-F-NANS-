@@ -1,4 +1,5 @@
 import LedgerSwitch from "@/components/finance/LedgerSwitch";
+import ThemeToggle from "@/components/ThemeToggle";
 import AppNav from "@/components/AppNav";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
@@ -11,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="app">
             <header className="app-top">
                 <strong className="app-name">Ofis Finans</strong>
-                {ledgers.length > 1 ? <LedgerSwitch ledgers={ledgers} current={ledger.slug} /> : <span className="app-ledger">{ledger.name}</span>}
+                <div className="app-top-right">{ledgers.length > 1 ? <LedgerSwitch ledgers={ledgers} current={ledger.slug} /> : <span className="app-ledger">{ledger.name}</span>}<ThemeToggle /></div>
             </header>
             <AppNav />
             <main className="app-main">{children}</main>

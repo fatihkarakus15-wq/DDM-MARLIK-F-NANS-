@@ -5,6 +5,10 @@ import { projectsOverview } from "@/lib/finance/reports";
 import { money, tl0 } from "@/lib/finance/money";
 import { fmtDay, todayYmd } from "@/lib/finance/dates";
 import { loadQuick } from "@/lib/finance/quick";
+import Hero from "@/components/finance/Hero";
+import { loadDashboard } from "@/lib/finance/summary";
+import { ensureFreshRates } from "@/lib/finance/rates";
+import { getUser } from "@/lib/auth";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import InstallHint from "@/components/InstallHint";
@@ -17,7 +21,13 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
     await requireFinancePage();
     const { p: pid } = await searchParams;
     const { ledger } = await activeLedger();
-    const all = await projectsOverview(ledger.id);
+    const [all, dash, user] = await Promise.all([
+        projectsOverview(ledger.id),
+        ensureFreshRates(600).then(r => loadDashboard(ledger.id, r)),
+        getUser(),
+    ]);
+    const rawName = user?.name?.split(" ")[0] ?? user?.email.split("@")[0] ?? "";
+    const name = rawName.charAt(0).toLocaleUpperCase("tr") + rawName.slice(1);
     const live = all.filter(p => p.status === "ACTIVE" || p.status === "ON_HOLD" || p.status === "LEAD");
     const done = all.filter(p => p.status === "DONE");
     const current = live.find(p => p.id === pid) ?? live[0];
@@ -25,6 +35,8 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
 
     return (
         <div>
+            <Hero name={name} ledger={ledger.name} total={tl0(dash.totals.cash)} monthIn={tl0(dash.month.income)} monthOut={tl0(dash.month.expense)} />
+            <div className="sheet">
             <InstallHint />
             {current && quick ? (
                 <>
@@ -33,7 +45,7 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                     </nav>
                     <p className="sm-sub"><Link className="adm-link" href={`/projeler/${current.id}`}>{current.name} ayrıntısı</Link> · toplam harcanan <b>{tl0(quick.totalExpense)}</b>{current.budget > 0 ? ` / bütçe ${tl0(current.budget)}` : ""}</p>
                     {quick.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                    <ProjectQuickAdd key={current.id} ledgerId={ledger.id} projectId={current.id} today={todayYmd()} accounts={quick.accounts} categories={quick.categories} favorites={quick.favorites} />
+                    <div id="ekle"><ProjectQuickAdd key={current.id} ledgerId={ledger.id} projectId={current.id} today={todayYmd()} accounts={quick.accounts} categories={quick.categories} favorites={quick.favorites} /></div>
                     <h2 className="sm-h">Son harcamalar</h2>
                     {quick.recent.length === 0 ? <p className="muted" style={{ marginBottom: 18 }}>Bu projede henüz harcama yok.</p> : (
                         <ul className="sm-recent">
@@ -60,6 +72,7 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
             </details>
 
             <p className="muted"><Link className="adm-link" href="/projeler">Tüm projeler ve düzenleme</Link>{done.length > 0 ? <> · <Link className="adm-link" href="/projeler?durum=DONE">{done.length} tamamlanan proje</Link></> : null} · <Link className="adm-link" href="/ozet">Genel özet</Link></p>
+            </div>
         </div>
     );
 }

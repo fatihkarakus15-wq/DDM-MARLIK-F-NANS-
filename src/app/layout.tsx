@@ -15,12 +15,13 @@ export const viewport: Viewport = {
     width: "device-width",
     initialScale: 1,
     viewportFit: "cover",
-    themeColor: "#14171c",
+    themeColor: "#0a1814",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
     return (
-        <html lang="tr">
+        <html lang="tr" data-theme="dark" suppressHydrationWarning>
+            <head><script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem("ofis-finans:tema");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}` }} /></head>
             <body>
                 {children}
                 <RegisterSW />
