@@ -70,3 +70,28 @@ export async function createOwner(_: ActionState, fd: FormData): Promise<ActionS
         redirect("/");
     });
 }
+
+/** Şifremi unuttum: SETUP_KEY ile tek hesabın şifresi (isteğe bağlı e-postası) yenilenir, eski oturumlar kapanır */
+export async function resetOwnerPassword(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const gate = rateLimit(`setup:${await clientKey()}`, 10, 15 * 60);
+        if (!gate.ok) throw new FormError("Çok fazla deneme yapıldı. Biraz sonra tekrar deneyin.");
+        if (!setupKeyOk(str(fd, "key", "Kurulum anahtarı"))) throw new FormError("Kurulum anahtarı hatalı.");
+        if ((await dbState()).state !== "ok") throw new FormError("Önce veritabanı kurulmalı.");
+        const password = str(fd, "password", "Yeni şifre");
+        if (password.length < 10) throw new FormError("Şifre en az 10 karakter olmalı.");
+        if (password !== str(fd, "again", "Yeni şifre (tekrar)")) throw new FormError("Şifreler aynı değil.");
+        const email = String(fd.get("email") ?? "").trim().toLowerCase();
+        if (email && !EMAIL_RE.test(email)) throw new FormError("Geçerli bir e-posta yazın.");
+        const owner = await prisma.appUser.findFirst({ orderBy: { createdAt: "asc" }, select: { id: true } });
+        if (!owner) redirect("/kurulum");
+        const user = await prisma.appUser.update({
+            where: { id: owner.id },
+            data: { passwordHash: await hashPassword(password), epoch: { increment: 1 }, ...(email && { email }) },
+            select: { id: true, epoch: true },
+        });
+        resetLimit(`login:mail:${email}`);
+        await startSession(user);
+        redirect("/");
+    });
+}
