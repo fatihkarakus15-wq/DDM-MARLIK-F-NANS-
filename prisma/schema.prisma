@@ -184,6 +184,9 @@ model FinProject {
   endDate        DateTime?
   contractAmount Float? // Sözleşme bedeli (KDV hariç, TL)
   note           String?
+  address        String? // Şantiye / iş adresi (konum)
+  clientTckn     String? // Müşterinin T.C. kimlik numarası
+  stage          String? // İş aşaması (Keşif, Çizim, İmalat, Montaj…)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

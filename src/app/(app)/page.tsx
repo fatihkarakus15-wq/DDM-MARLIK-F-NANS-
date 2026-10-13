@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
 import { projectsOverview } from "@/lib/finance/reports";
-import { tl0 } from "@/lib/finance/money";
+import { prisma } from "@/lib/prisma";
+import { fmtDay, today } from "@/lib/finance/dates";
+import { money, tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import InstallHint from "@/components/InstallHint";
 import { saveProject } from "./actions";
@@ -14,7 +16,17 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
     await requireFinancePage();
     const { durum } = await searchParams;
     const { ledger } = await activeLedger();
-    const all = await projectsOverview(ledger.id);
+    const now = today();
+    const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 12));
+    const [all, due] = await Promise.all([
+        projectsOverview(ledger.id),
+        prisma.finTransaction.findMany({
+            where: { ledgerId: ledger.id, type: "INCOME", status: "PLANNED", projectId: { not: null }, date: { lte: monthEnd }, project: { status: { notIn: ["CANCELLED"] } } },
+            orderBy: { date: "asc" }, take: 30,
+            select: { id: true, title: true, amount: true, currency: true, amountTRY: true, date: true, projectId: true, project: { select: { name: true, client: { select: { name: true } } } }, contact: { select: { name: true } } },
+        }),
+    ]);
+    const dueTotal = due.reduce((a, t) => a + t.amountTRY, 0);
     const active = all.filter(p => p.status === "ACTIVE" || p.status === "ON_HOLD" || p.status === "LEAD");
     const delivered = all.filter(p => p.status === "DONE");
     const showDelivered = durum === "teslim";
@@ -27,6 +39,23 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                 <Link href="/" replace className={`pl-tab${!showDelivered ? " on" : ""}`} aria-current={!showDelivered ? "page" : undefined}>Aktif <span>{active.length}</span></Link>
                 <Link href="/?durum=teslim" replace className={`pl-tab${showDelivered ? " on" : ""}`} aria-current={showDelivered ? "page" : undefined}>Teslim edilenler <span>{delivered.length}</span></Link>
             </nav>
+
+            {!showDelivered && due.length > 0 && (
+                <section className="due-card" aria-label="Bu ay alınacaklar">
+                    <h2>Bu ay alınacaklar</h2>
+                    <div className="due-total">{tl0(dueTotal)}</div>
+                    <ul>
+                        {due.map(t => (
+                            <li key={t.id} className={t.date < now ? "late" : ""}>
+                                <Link href={`/projeler/${t.projectId}#tahsilat`}>
+                                    <span>{t.contact?.name ?? t.project?.client?.name ?? t.project?.name}<small>{t.project?.name} · {fmtDay(t.date)}{t.date < now ? " · gecikmiş" : ""}</small></span>
+                                    <b>{money(t.amount, t.currency)}</b>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
+            )}
 
             {list.length === 0 ? (
                 <p className="pl-empty">{showDelivered ? "Henüz teslim edilen proje yok." : "Aktif proje yok. Aşağıdan yeni proje ekleyin."}</p>

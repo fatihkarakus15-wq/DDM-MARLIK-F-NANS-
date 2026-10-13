@@ -29,5 +29,8 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 - Ayarlar > Kullanıcılar: bu cihazı kaydet, cihaz sil, davet bağlantısı (`inviteUser`, 7 gün, `/davet/<anahtar>`; davetli şifresiz hesap açılır, bağlantıyı açıp yüzünü kaydeder). Kayıtlı e-postaya yeni bağlantı = yeni telefon ekleme. Geçiş anahtarı alan adına bağlıdır: site adresi değişirse yeniden kaydedilmeli.
 - Göç `002-gecis-anahtarlari` (`app_passkeys`, `app_users.inviteHash/inviteExpires`): yayından sonra /kurulum "Veritabanını güncelle" (SETUP_KEY) çalıştırılmalı.
 
+## Proje ayrıntıları ve tahsilat planı (2026-10-13)
+- Proje sayfasında "Proje bilgileri" (ad, müşteri adı → cari kaydı yoksa açılır, T.C. no doğrulamalı, adres + harita bağlantısı, durum, aşama, iş bedeli, başlangıç/bitiş) ve "Tahsilat planı" (müşteriden hangi tarihte ne kadar: vadeli gelir kaydı, projeye ve müşteriye bağlı; "Alındı" hesaba işler). Ana ekranda "Bu ay alınacaklar" (bu ay ve geçmişte kalan planlı tahsilatlar). Göç `003-proje-ayrintilari` (`address`, `clientTckn`, `stage`): yayından sonra /kurulum "Veritabanını güncelle".
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.

@@ -7,7 +7,7 @@ import { ensureFreshRates } from "@/lib/finance/rates";
 import { formOptions } from "@/lib/finance/options";
 import { projectCosts, projectsOverview } from "@/lib/finance/reports";
 import { PROJECT_STATUS, TX_TYPE } from "@/lib/finance/labels";
-import { fmtDay, monthLabel, todayYmd } from "@/lib/finance/dates";
+import { fmtDay, monthLabel, todayYmd, ymd } from "@/lib/finance/dates";
 import { money, pct, tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import { Amount, Kpi } from "@/components/finance/ui";
@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addProjectItem, deleteProject, saveBudgetLine, setProjectDelivered } from "../../actions";
+import { addCollection, addProjectItem, deleteProject, deleteTransaction, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
     ]);
     if (!project) notFound();
-    const [overview, costs, txs, opts] = await Promise.all([
+    const [incomes, overview, costs, txs, opts] = await Promise.all([
+        prisma.finTransaction.findMany({ where: { ledgerId: ledger.id, projectId: id, type: "INCOME" }, orderBy: [{ date: "asc" }, { createdAt: "asc" }], select: { id: true, title: true, amount: true, currency: true, date: true, status: true } }),
         projectsOverview(ledger.id),
         projectCosts(ledger.id, id),
         prisma.finTransaction.findMany({
@@ -56,6 +57,11 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     const spentBy = new Map(costs.compare.map(c => [c.categoryId, c.actual]));
     const favorites = picked.slice(0, 8).map(c => ({ id: c.id, label: leafLabel(c.label), spent: spentBy.get(c.id) }));
     const status = PROJECT_STATUS[project.status];
+    const todayDay = todayYmd();
+    const received = incomes.filter(t => t.status === "DONE").reduce((a, t) => a + t.amount, 0);
+    const pending = incomes.filter(t => t.status === "PLANNED").reduce((a, t) => a + t.amount, 0);
+    const unplanned = project.contractAmount != null ? Math.max(0, project.contractAmount - received - pending) : null;
+    const STAGES = ["Teklif", "Keşif / ölçü", "Proje çizimi", "Ruhsat / onay", "İmalat / uygulama", "Montaj", "Teslim"];
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
     const budgeted = new Set(costs.compare.filter(c => c.budget > 0).map(c => c.categoryId));
 
@@ -65,7 +71,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
             <div className="adm-head">
                 <div>
                     <h1 className="adm-title">{project.code ? `${project.code} · ` : ""}{project.name}</h1>
-                    <p className="adm-sub"><span className={`adm-badge ${status.tone}`}>{status.label}</span> · {project.client ? <Link className="adm-link" href={`/cariler/${project.client.id}`}>{project.client.name}</Link> : "Müşteri belirtilmemiş"}
+                    <p className="adm-sub"><span className={`adm-badge ${status.tone}`}>{status.label}</span>{project.stage && <> · <span className="adm-badge info">{project.stage}</span></>}{project.address && <> · <a className="adm-link" target="_blank" rel="noreferrer" href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(project.address)}`}>📍 {project.address}</a></>} · {project.client ? <Link className="adm-link" href={`/cariler/${project.client.id}`}>{project.client.name}</Link> : "Müşteri belirtilmemiş"}
                         {project.startDate && <> · {fmtDay(project.startDate)}{project.endDate ? ` – ${fmtDay(project.endDate)}` : ""}</>}</p>
                 </div>
                 <div className="adm-actions"><Link className="btn btn-sm adm-btn-outline" href={`/projeler?duzenle=${id}#form`}>Projeyi düzenle</Link><Link className="btn btn-sm adm-btn-outline" href={`/hareketler?proje=${id}&donem=tumu`}>Tüm hareketler</Link></div>
@@ -84,6 +90,82 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                     ))}
                 </ul>
             )}
+
+            <section className="adm-card" id="tahsilat">
+                <div className="adm-card-head"><h2 className="adm-card-title">Tahsilat planı</h2><span className="adm-card-note">Müşteriden ne zaman, ne kadar alınacak</span></div>
+                <div className="pay-sum">
+                    <div><small>İş bedeli</small><b>{project.contractAmount != null ? tl0(project.contractAmount) : "—"}</b></div>
+                    <div><small>Alınan</small><b className="fin-pos">{tl0(received)}</b></div>
+                    <div><small>Alınacak (planlı)</small><b>{tl0(pending)}</b></div>
+                    <div><small>Plana girilmemiş</small><b>{unplanned != null ? tl0(unplanned) : "—"}</b></div>
+                </div>
+                {incomes.length === 0 ? <p className="adm-empty">Henüz tahsilat planı yok. Aşağıdan tarih ve tutar ekleyin (ör. peşinat, 1. taksit).</p> : (
+                    <ul className="pay-list">
+                        {incomes.map(t => {
+                            const late = t.status === "PLANNED" && ymd(t.date) < todayDay;
+                            return (
+                                <li key={t.id} className={t.status === "DONE" ? "done" : late ? "late" : ""}>
+                                    <div className="pay-row">
+                                        <span><b>{fmtDay(t.date)}</b><small>{t.title}{project.client ? ` · ${project.client.name}` : ""}</small></span>
+                                        <span className="pay-amt"><b>{money(t.amount, t.currency)}</b><em className={`adm-badge ${t.status === "DONE" ? "ok" : late ? "bad" : "warn"}`}>{t.status === "DONE" ? "Alındı" : late ? "Gecikmiş" : "Bekliyor"}</em></span>
+                                    </div>
+                                    {t.status === "PLANNED" && (
+                                        <details className="pay-act">
+                                            <summary>Alındı olarak işle</summary>
+                                            <AdminForm action={settleAction} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <label className="adm-field"><span className="adm-label">Hangi hesaba</span><select name="accountId" required>{opts.accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></label>
+                                                <label className="adm-field"><span className="adm-label">Tarih</span><input type="date" name="date" defaultValue={todayDay} required /></label>
+                                                <label className="adm-field"><span className="adm-label">Tutar</span><input name="amount" inputMode="decimal" defaultValue={String(t.amount).replace(".", ",")} /></label>
+                                                <SubmitButton>Alındı</SubmitButton>
+                                            </AdminForm>
+                                            <AdminForm action={deleteTransaction} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <SubmitButton className="btn btn-sm adm-btn-danger" confirm="Bu tahsilat planı silinsin mi?">Planı sil</SubmitButton>
+                                            </AdminForm>
+                                        </details>
+                                    )}
+                                </li>
+                            );
+                        })}
+                    </ul>
+                )}
+                <div className="adm-card-body">
+                    <AdminForm action={addCollection} className="adm-form">
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="projectId" value={id} />
+                        <div className="adm-form-grid">
+                            <label className="adm-field"><span className="adm-label">Tahsilat tarihi</span><input type="date" name="date" required /></label>
+                            <label className="adm-field"><span className="adm-label">Tutar (₺)</span><input name="amount" inputMode="decimal" placeholder="0" required /></label>
+                            <label className="adm-field"><span className="adm-label">Açıklama</span><input name="title" placeholder="Ör. Peşinat, 1. taksit" maxLength={200} /></label>
+                        </div>
+                        <div className="adm-form-foot"><SubmitButton>Plana ekle</SubmitButton><span className="adm-help">Plan Vadeler ve nakit akışında görünür; ana ekrandaki “Bu ay alınacaklar”a girer.</span></div>
+                    </AdminForm>
+                </div>
+            </section>
+
+            <section className="adm-card" id="bilgiler">
+                <div className="adm-card-head"><h2 className="adm-card-title">Proje bilgileri</h2></div>
+                <div className="adm-card-body">
+                    <AdminForm action={saveProjectDetails} className="adm-form">
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={id} />
+                        <label className="adm-field"><span className="adm-label">Proje adı</span><input name="name" defaultValue={project.name} required /></label>
+                        <label className="adm-field"><span className="adm-label">Müşteri adı soyadı</span><input name="clientName" list="musteriler" defaultValue={project.client?.name ?? ""} autoComplete="off" /></label>
+                        <datalist id="musteriler">{opts.contacts.map(c => <option key={c.id} value={c.label} />)}</datalist>
+                        <label className="adm-field"><span className="adm-label">Müşteri T.C. kimlik no</span><input name="clientTckn" inputMode="numeric" maxLength={11} defaultValue={project.clientTckn ?? ""} autoComplete="off" /></label>
+                        <label className="adm-field"><span className="adm-label">Konum / adres</span><textarea name="address" rows={2} defaultValue={project.address ?? ""} placeholder="Mahalle, sokak, no, ilçe / il" /></label>
+                        <div className="adm-form-grid">
+                            <label className="adm-field"><span className="adm-label">İş durumu</span><select name="status" defaultValue={project.status}>{Object.entries(PROJECT_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}</select></label>
+                            <label className="adm-field"><span className="adm-label">Hangi aşamada</span><input name="stage" list="asamalar" defaultValue={project.stage ?? ""} placeholder="Ör. İmalat / uygulama" /></label>
+                            <datalist id="asamalar">{STAGES.map(a => <option key={a} value={a} />)}</datalist>
+                            <label className="adm-field"><span className="adm-label">İşi ne kadara aldık (₺)</span><input name="contractAmount" inputMode="decimal" defaultValue={project.contractAmount != null ? String(project.contractAmount).replace(".", ",") : ""} /></label>
+                            <label className="adm-field"><span className="adm-label">İş başlangıç tarihi</span><input type="date" name="startDate" defaultValue={project.startDate ? ymd(project.startDate) : ""} /></label>
+                            <label className="adm-field"><span className="adm-label">İş bitiş tarihi</span><input type="date" name="endDate" defaultValue={project.endDate ? ymd(project.endDate) : ""} /></label>
+                        </div>
+                        <label className="adm-field"><span className="adm-label">Not</span><textarea name="note" rows={2} defaultValue={project.note ?? ""} /></label>
+                        <div className="adm-form-foot"><SubmitButton>Bilgileri kaydet</SubmitButton></div>
+                    </AdminForm>
+                </div>
+            </section>
 
             <details className="adm-fold">
                 <summary>Özet, bütçeler ve grafikler</summary>

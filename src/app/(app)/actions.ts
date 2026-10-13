@@ -18,6 +18,7 @@ import { parseDay, ymd } from "@/lib/finance/dates";
 import { loadRates, rateTRY, setManualRate } from "@/lib/finance/rates";
 import { FIRST_LOOKBACK_DAYS, generateRecurring } from "@/lib/finance/recurring";
 import { settleTransaction } from "@/lib/finance/transactions";
+import { validTckn } from "@/lib/finance/tckn";
 import { importLines } from "@/lib/finance/import";
 import { ASSET } from "@/lib/finance/labels";
 import type { FinAccountKind, FinCategoryKind, FinChequeDirection, FinChequeKind, FinContactKind, FinFrequency, FinProjectStatus } from "@prisma/client";
@@ -173,6 +174,56 @@ export async function saveProject(_: ActionState, fd: FormData): Promise<ActionS
         else await prisma.finProject.create({ data: { ...data, ledgerId: ledger.id } });
         refresh();
         return id ? "Proje güncellendi." : "Proje eklendi.";
+    });
+}
+
+/** Proje bilgileri: ad, müşteri, T.C., adres, aşama, durum, iş bedeli, tarihler, not */
+export async function saveProjectDetails(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const id = str(fd, "id");
+        const clientName = optStr(fd, "clientName");
+        let clientId: string | null = null;
+        if (clientName) {
+            const found = await prisma.finContact.findFirst({ where: { ledgerId: ledger.id, name: { equals: clientName, mode: "insensitive" } }, select: { id: true } });
+            clientId = found?.id ?? (await prisma.finContact.create({ data: { ledgerId: ledger.id, name: clientName.slice(0, 120), kind: "CUSTOMER" }, select: { id: true } })).id;
+        }
+        const tckn = (optStr(fd, "clientTckn") ?? "").replace(/\s/g, "");
+        if (tckn && !validTckn(tckn)) throw new FormError("T.C. kimlik numarası geçersiz (11 hane, rakam).");
+        const start = optDay(fd, "startDate", "İş başlangıç tarihi");
+        const end = optDay(fd, "endDate", "İş bitiş tarihi");
+        if (start && end && end < start) throw new FormError("Bitiş tarihi başlangıçtan önce olamaz.");
+        const upd = await prisma.finProject.updateMany({
+            where: { id, ledgerId: ledger.id },
+            data: {
+                name: str(fd, "name", "Proje adı").slice(0, 120), clientId, clientTckn: tckn || null,
+                address: optStr(fd, "address")?.slice(0, 300) ?? null, stage: optStr(fd, "stage")?.slice(0, 60) ?? null,
+                status: oneOf<FinProjectStatus>(str(fd, "status"), ["LEAD", "ACTIVE", "ON_HOLD", "DONE", "CANCELLED"], "Durum"),
+                contractAmount: optNum(fd, "contractAmount", "İş bedeli"), startDate: start, endDate: end, note: optStr(fd, "note"),
+            },
+        });
+        must(upd.count, "Proje");
+        refresh();
+        return "Proje bilgileri kaydedildi.";
+    });
+}
+
+/** Tahsilat planı: projeye müşteriden "şu tarihte şu kadar alınacak" kaydı (vadeli gelir) */
+export async function addCollection(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const project = await prisma.finProject.findFirst({ where: { id: str(fd, "projectId"), ledgerId: ledger.id }, select: { id: true, name: true, clientId: true } });
+        if (!project) throw new FormError("Proje bulunamadı.");
+        const amount = r2(num(fd, "amount", "Tutar"));
+        if (!(amount > 0)) throw new FormError("Tutar sıfırdan büyük olmalı.");
+        await prisma.finTransaction.create({
+            data: {
+                ledgerId: ledger.id, type: "INCOME", status: "PLANNED", date: day(fd, "date", "Tahsilat tarihi"), title: (optStr(fd, "title") ?? "Tahsilat").slice(0, 200),
+                amount, currency: "TRY", fxRate: 1, amountTRY: amount, vatAmount: 0, withholdingAmount: 0, projectId: project.id, contactId: project.clientId,
+            },
+        });
+        refresh();
+        return "Tahsilat planına eklendi.";
     });
 }
 

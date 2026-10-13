@@ -19,4 +19,12 @@ export const MIGRATIONS: Migration[] = [
             `CREATE INDEX IF NOT EXISTS "app_passkeys_userId_idx" ON "app_passkeys"("userId")`,
         ],
     },
+    {
+        id: "003-proje-ayrintilari",
+        statements: [
+            `ALTER TABLE "fin_projects" ADD COLUMN IF NOT EXISTS "address" TEXT`,
+            `ALTER TABLE "fin_projects" ADD COLUMN IF NOT EXISTS "clientTckn" TEXT`,
+            `ALTER TABLE "fin_projects" ADD COLUMN IF NOT EXISTS "stage" TEXT`,
+        ],
+    },
 ];
