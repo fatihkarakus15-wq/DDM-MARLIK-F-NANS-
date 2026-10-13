@@ -32,5 +32,9 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 ## Proje ayrıntıları ve tahsilat planı (2026-10-13)
 - Proje sayfasında "Proje bilgileri" (ad, müşteri adı → cari kaydı yoksa açılır, T.C. no doğrulamalı, adres + harita bağlantısı, durum, aşama, iş bedeli, başlangıç/bitiş) ve "Tahsilat planı" (müşteriden hangi tarihte ne kadar: vadeli gelir kaydı, projeye ve müşteriye bağlı; "Alındı" hesaba işler). Ana ekranda "Bu ay alınacaklar" (bu ay ve geçmişte kalan planlı tahsilatlar). Göç `003-proje-ayrintilari` (`address`, `clientTckn`, `stage`): yayından sonra /kurulum "Veritabanını güncelle".
 
+## Ofis giderleri, ilave işler, ekstra alınacak (2026-10-13)
+- Alt çubukta **Ofis** sekmesi (`/ofis`): sabit ofis giderleri (kira, maaş, fatura, abonelik) = `FinRecurring` (EXPENSE, projesiz); aylık/yıllık toplam, bu ay ödenen/ödenecek, "Ödendi işle". Hareketler "Daha fazla"ya taşındı.
+- Projede **İlave işler** (`FinProjectExtra`: sonradan gelen iş + tutar, iş bedeline eklenir) ve **Müşteriden ekstra alınacaklar**: harcama girerken (tuş takımı ya da TxForm) "Müşteriden ekstra alınacak" → `FinTransaction.rebillAmount`; projede listelenir, "Tahsilat planına ekle" (`planRebill`) vadeli gelir üretir (`rebillPlanned`). Tahsilat özeti: iş bedeli + ilaveler + ekstralar − alınan − planlı = plana girilmemiş. Göç `004-ilave-isler-ekstra-alinacak`: yayından sonra /kurulum "Veritabanını güncelle".
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.

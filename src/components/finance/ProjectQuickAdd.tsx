@@ -29,6 +29,8 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
     const [note, setNote] = useState("");
     const [date, setDate] = useState(today);
     const [file, setFile] = useState<File | null>(null);
+    const [rebill, setRebill] = useState(false);
+    const [rebillAmt, setRebillAmt] = useState("");
     const [accountId, setAccountId] = useState(() => {
         try { const saved = localStorage.getItem(KEY); if (saved && accounts.some(a => a.id === saved)) return saved; } catch { /* depolama kapalı */ }
         return accounts[0]?.id ?? "";
@@ -57,6 +59,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
         fd.set("accountId", accountId); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
         fd.set("title", note.trim() || label(categoryId) || "Harcama");
         if (file) fd.set("files", file);
+        if (rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
         setBusy(true); setMsg(null);
         try {
             const res = await fetch("/api/hareket", { method: "POST", body: fd });
@@ -64,7 +67,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             if (!res.ok || !json?.success) { setMsg({ ok: false, text: json?.error ?? "Kaydedilemedi." }); return; }
             try { localStorage.setItem(KEY, accountId); } catch { /* depolama kapalı */ }
             setMsg({ ok: true, text: `${show(raw)} ₺ kaydedildi${categoryId ? ` · ${label(categoryId)}` : ""}` });
-            setRaw(""); setNote(""); setFile(null); setCategoryId(initialCategoryId ?? "");
+            setRaw(""); setNote(""); setFile(null); setRebill(false); setRebillAmt(""); setCategoryId(initialCategoryId ?? "");
             router.refresh();
         } catch {
             setMsg({ ok: false, text: "Bağlantı kurulamadı. Tekrar deneyin." });
@@ -100,6 +103,13 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             <div className="sm-keys" role="group" aria-label="Rakamlar">
                 {KEYS.map(k => <button key={k} type="button" onClick={() => press(k)} aria-label={k === "⌫" ? "Sil" : k}>{k}</button>)}
             </div>
+
+            <label className="sm-rebill"><input type="checkbox" checked={rebill} onChange={e => setRebill(e.target.checked)} /> Müşteriden ekstra alınacak</label>
+            {rebill && (
+                <label className="sm-rebill-amt">Müşteriden alınacak (₺)
+                    <input name="rebillAmount" inputMode="decimal" value={rebillAmt} onChange={e => setRebillAmt(e.target.value)} placeholder={show(raw) === "0" ? "0" : `${show(raw)} (harcamayla aynı)`} autoComplete="off" />
+                </label>
+            )}
 
             <details className="sm-more">
                 <summary>Not, hesap, tarih, fiş{note || file ? " ·" : ""}{note ? " not" : ""}{file ? " fiş" : ""}</summary>

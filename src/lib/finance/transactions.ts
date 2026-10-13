@@ -96,12 +96,16 @@ export async function parseTxForm(fd: FormData): Promise<ParsedTx> {
     if (vatAmount > amount) throw new FormError("KDV tutarı toplam tutardan büyük olamaz.");
     const withholdingAmount = type === "TRANSFER" ? 0 : r2(number(fd, "withholdingAmount", "Stopaj") ?? 0);
 
+    // Gider projeye bağlıysa: müşteriden ekstra alınacak tutar (isteğe bağlı)
+    const rebill = type === "EXPENSE" && projectId ? number(fd, "rebillAmount", "Müşteriden alınacak tutar") : null;
+    const rebillAmount = rebill != null && rebill > 0 ? r2(rebill) : null;
+
     return {
         id: opt(fd, "id"), ledgerId,
         data: {
             type, status, date, docDate, docNo: opt(fd, "docNo"), title, note: opt(fd, "note"),
             amount, currency, fxRate, amountTRY: r2(amount * fxRate), vatRate, vatAmount, withholdingAmount,
-            accountId, toAccountId, toAmount, categoryId, projectId, contactId,
+            accountId, toAccountId, toAmount, categoryId, projectId, contactId, rebillAmount,
         },
     };
 }

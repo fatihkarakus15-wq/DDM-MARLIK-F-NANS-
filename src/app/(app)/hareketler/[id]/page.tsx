@@ -80,7 +80,7 @@ export default async function HareketDetay({ params }: { params: Promise<{ id: s
                         ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates}
                         initial={{
                             id: tx.id, type: tx.type, status: tx.status, date: ymd(tx.date), docDate: tx.docDate ? ymd(tx.docDate) : undefined, docNo: tx.docNo ?? undefined, title: tx.title, note: tx.note ?? undefined,
-                            amount: tx.amount, currency: tx.currency, fxRate: tx.fxRate, vatRate: tx.vatRate, vatAmount: tx.vatAmount, withholdingAmount: tx.withholdingAmount,
+                            amount: tx.amount, currency: tx.currency, fxRate: tx.fxRate, vatRate: tx.vatRate, vatAmount: tx.vatAmount, withholdingAmount: tx.withholdingAmount, rebillAmount: tx.rebillAmount,
                             accountId: tx.accountId, toAccountId: tx.toAccountId, toAmount: tx.toAmount, categoryId: tx.categoryId, projectId: tx.projectId, contactId: tx.contactId,
                         }}
                     />

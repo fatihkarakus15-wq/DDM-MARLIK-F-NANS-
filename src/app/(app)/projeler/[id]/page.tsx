@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addCollection, addProjectItem, deleteProject, deleteTransaction, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
+import { addCollection, addExtra, addProjectItem, deleteExtra, deleteProject, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,9 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
     ]);
     if (!project) notFound();
-    const [incomes, overview, costs, txs, opts] = await Promise.all([
+    const [extras, rebills, incomes, overview, costs, txs, opts] = await Promise.all([
+        prisma.finProjectExtra.findMany({ where: { projectId: id }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
+        prisma.finTransaction.findMany({ where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE", rebillAmount: { gt: 0 } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], select: { id: true, title: true, amount: true, currency: true, date: true, rebillAmount: true, rebillPlanned: true } }),
         prisma.finTransaction.findMany({ where: { ledgerId: ledger.id, projectId: id, type: "INCOME" }, orderBy: [{ date: "asc" }, { createdAt: "asc" }], select: { id: true, title: true, amount: true, currency: true, date: true, status: true } }),
         projectsOverview(ledger.id),
         projectCosts(ledger.id, id),
@@ -60,7 +62,12 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     const todayDay = todayYmd();
     const received = incomes.filter(t => t.status === "DONE").reduce((a, t) => a + t.amount, 0);
     const pending = incomes.filter(t => t.status === "PLANNED").reduce((a, t) => a + t.amount, 0);
-    const unplanned = project.contractAmount != null ? Math.max(0, project.contractAmount - received - pending) : null;
+    const extrasTotal = extras.reduce((a, e) => a + e.amount, 0);
+    const rebillTotal = rebills.reduce((a, t) => a + (t.rebillAmount ?? 0), 0);
+    const rebillOpen = rebills.filter(t => !t.rebillPlanned).reduce((a, t) => a + (t.rebillAmount ?? 0), 0);
+    const hasTotal = project.contractAmount != null || extrasTotal > 0 || rebillTotal > 0;
+    const grandTotal = (project.contractAmount ?? 0) + extrasTotal + rebillTotal;
+    const unplanned = hasTotal ? Math.max(0, grandTotal - received - pending) : null;
     const STAGES = ["Teklif", "Keşif / ölçü", "Proje çizimi", "Ruhsat / onay", "İmalat / uygulama", "Montaj", "Teslim"];
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
     const budgeted = new Set(costs.compare.filter(c => c.budget > 0).map(c => c.categoryId));
@@ -95,9 +102,11 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                 <div className="adm-card-head"><h2 className="adm-card-title">Tahsilat planı</h2><span className="adm-card-note">Müşteriden ne zaman, ne kadar alınacak</span></div>
                 <div className="pay-sum">
                     <div><small>İş bedeli</small><b>{project.contractAmount != null ? tl0(project.contractAmount) : "—"}</b></div>
+                    <div><small>İlave işler</small><b>{tl0(extrasTotal)}</b></div>
+                    <div><small>Harcamadan ekstra</small><b>{tl0(rebillTotal)}</b></div>
                     <div><small>Alınan</small><b className="fin-pos">{tl0(received)}</b></div>
                     <div><small>Alınacak (planlı)</small><b>{tl0(pending)}</b></div>
-                    <div><small>Plana girilmemiş</small><b>{unplanned != null ? tl0(unplanned) : "—"}</b></div>
+                    <div><small>Plana girilmemiş (toplam)</small><b>{unplanned != null ? tl0(unplanned) : "—"}</b></div>
                 </div>
                 {incomes.length === 0 ? <p className="adm-empty">Henüz tahsilat planı yok. Aşağıdan tarih ve tutar ekleyin (ör. peşinat, 1. taksit).</p> : (
                     <ul className="pay-list">
@@ -141,6 +150,62 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                         <div className="adm-form-foot"><SubmitButton>Plana ekle</SubmitButton><span className="adm-help">Plan Vadeler ve nakit akışında görünür; ana ekrandaki “Bu ay alınacaklar”a girer.</span></div>
                     </AdminForm>
                 </div>
+            </section>
+
+            <section className="adm-card" id="ilave">
+                <div className="adm-card-head"><h2 className="adm-card-title">İlave işler</h2><span className="adm-card-note">Sonradan gelen işler, iş bedeline eklenir{extrasTotal > 0 ? ` · toplam ${tl0(extrasTotal)}` : ""}</span></div>
+                {extras.length === 0 ? <p className="adm-empty">İlave iş yok. Müşteri sonradan ek iş isterse aşağıdan tutarıyla girin.</p> : (
+                    <ul className="pay-list">
+                        {extras.map(e => (
+                            <li key={e.id}>
+                                <div className="pay-row">
+                                    <span><b>{e.title}</b><small>{e.date ? fmtDay(e.date) : "tarihsiz"}{e.note ? ` · ${e.note}` : ""}</small></span>
+                                    <span className="pay-amt"><b>{money(e.amount, "TRY")}</b>
+                                        <AdminForm action={deleteExtra} className="adm-inline"><input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={e.id} /><SubmitButton className="btn btn-sm adm-btn-danger" pendingText="…" confirm="İlave iş silinsin mi?">Sil</SubmitButton></AdminForm>
+                                    </span>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                <div className="adm-card-body">
+                    <AdminForm action={addExtra} className="adm-form">
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="projectId" value={id} />
+                        <div className="adm-form-grid">
+                            <label className="adm-field"><span className="adm-label">İlave işin adı</span><input name="title" placeholder="Ör. Ek mutfak dolabı" required maxLength={200} /></label>
+                            <label className="adm-field"><span className="adm-label">Tutar (₺)</span><input name="amount" inputMode="decimal" placeholder="0" required /></label>
+                            <label className="adm-field"><span className="adm-label">Tarih</span><input type="date" name="date" defaultValue={todayDay} /></label>
+                        </div>
+                        <div className="adm-form-foot"><SubmitButton>İlave işi ekle</SubmitButton><span className="adm-help">Alınması için yukarıdaki Tahsilat planına tarih ve tutarla ayrıca ekleyin.</span></div>
+                    </AdminForm>
+                </div>
+            </section>
+
+            <section className="adm-card" id="ekstra">
+                <div className="adm-card-head"><h2 className="adm-card-title">Müşteriden ekstra alınacaklar</h2><span className="adm-card-note">Harcama girerken “Müşteriden ekstra alınacak” işaretlenenler{rebillTotal > 0 ? ` · toplam ${tl0(rebillTotal)}` : ""}</span></div>
+                {rebills.length === 0 ? <p className="adm-empty">Henüz yok. Harcama eklerken “Müşteriden ekstra alınacak”ı işaretlerseniz burada görünür.</p> : (
+                    <ul className="pay-list">
+                        {rebills.map(t => (
+                            <li key={t.id} className={t.rebillPlanned ? "done" : ""}>
+                                <div className="pay-row">
+                                    <span><b>{t.title}</b><small>{fmtDay(t.date)} · harcama {money(t.amount, t.currency)}</small></span>
+                                    <span className="pay-amt"><b>{money(t.rebillAmount ?? 0, "TRY")}</b><em className={`adm-badge ${t.rebillPlanned ? "ok" : "warn"}`}>{t.rebillPlanned ? "Plana eklendi" : "Plana eklenmedi"}</em></span>
+                                </div>
+                                {!t.rebillPlanned && (
+                                    <details className="pay-act">
+                                        <summary>Tahsilat planına ekle</summary>
+                                        <AdminForm action={planRebill} className="adm-inline">
+                                            <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                            <label className="adm-field"><span className="adm-label">Ne zaman alınacak</span><input type="date" name="date" defaultValue={todayDay} required /></label>
+                                            <SubmitButton>Plana ekle</SubmitButton>
+                                        </AdminForm>
+                                    </details>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+                {rebillOpen > 0 && <p className="adm-help" style={{ padding: "0 14px 14px" }}>Plana eklenmemiş ekstra: <b>{tl0(rebillOpen)}</b></p>}
             </section>
 
             <section className="adm-card" id="bilgiler">

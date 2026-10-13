@@ -27,4 +27,13 @@ export const MIGRATIONS: Migration[] = [
             `ALTER TABLE "fin_projects" ADD COLUMN IF NOT EXISTS "stage" TEXT`,
         ],
     },
+    {
+        id: "004-ilave-isler-ekstra-alinacak",
+        statements: [
+            `ALTER TABLE "fin_transactions" ADD COLUMN IF NOT EXISTS "rebillAmount" DOUBLE PRECISION`,
+            `ALTER TABLE "fin_transactions" ADD COLUMN IF NOT EXISTS "rebillPlanned" BOOLEAN NOT NULL DEFAULT false`,
+            `CREATE TABLE IF NOT EXISTS "fin_project_extras" ("id" TEXT NOT NULL PRIMARY KEY, "projectId" TEXT NOT NULL REFERENCES "fin_projects"("id") ON DELETE CASCADE ON UPDATE CASCADE, "title" TEXT NOT NULL, "amount" DOUBLE PRECISION NOT NULL, "date" TIMESTAMP(3), "note" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+            `CREATE INDEX IF NOT EXISTS "fin_project_extras_projectId_idx" ON "fin_project_extras"("projectId")`,
+        ],
+    },
 ];

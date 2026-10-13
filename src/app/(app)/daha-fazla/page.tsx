@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 const NOTES: Record<string, string> = {
     "/ozet": "Nakit, alacak, borç, bu ay, 30 gün tahmini",
+    "/hareketler": "Gelir, gider ve virmanların tüm kayıtları",
     "/hesaplar": "Banka, kasa, kredi kartı, POS bakiyeleri",
     "/cariler": "Müşteri, tedarikçi, taşeron bakiyeleri ve ekstre",
     "/cek-senet": "Aldığınız ve verdiğiniz çek / senetler",

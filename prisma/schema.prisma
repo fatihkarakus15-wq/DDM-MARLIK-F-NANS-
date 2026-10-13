@@ -197,10 +197,26 @@ model FinProject {
   recurrings   FinRecurring[]
   cheques      FinCheque[]
   rules        FinRule[]
+  extras       FinProjectExtra[]
 
   @@unique([ledgerId, code])
   @@index([ledgerId, status])
   @@map("fin_projects")
+}
+
+// Projeye sonradan gelen ilave işler (iş bedeline eklenen ayrı tutarlar)
+model FinProjectExtra {
+  id        String      @id @default(cuid())
+  projectId String
+  project   FinProject  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  amount    Float
+  date      DateTime?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([projectId])
+  @@map("fin_project_extras")
 }
 
 enum FinProjectStatus {
@@ -245,6 +261,8 @@ model FinTransaction {
   vatRate           Float? // %
   vatAmount         Float       @default(0) // amount içindeki KDV
   withholdingAmount Float       @default(0) // Stopaj (bilgi; amount'a dokunmaz)
+  rebillAmount      Float? // Gider için: müşteriden ekstra alınacak tutar (projeye yansıtılacak)
+  rebillPlanned     Boolean     @default(false) // Ekstra tutar tahsilat planına eklendi
   accountId         String? // DONE'da zorunlu
   toAccountId       String? // Virman: hedef hesap
   toAmount          Float? // Virman: hedef hesaba geçen tutar (para birimi farklıysa)

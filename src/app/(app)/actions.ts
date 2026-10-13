@@ -227,6 +227,50 @@ export async function addCollection(_: ActionState, fd: FormData): Promise<Actio
     });
 }
 
+/** İlave iş: projeye sonradan gelen iş ve tutarı (iş bedeline eklenir) */
+export async function addExtra(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const project = await prisma.finProject.findFirst({ where: { id: str(fd, "projectId"), ledgerId: ledger.id }, select: { id: true } });
+        if (!project) throw new FormError("Proje bulunamadı.");
+        const amount = r2(num(fd, "amount", "Tutar"));
+        if (!(amount > 0)) throw new FormError("Tutar sıfırdan büyük olmalı.");
+        await prisma.finProjectExtra.create({ data: { projectId: project.id, title: str(fd, "title", "İlave iş").slice(0, 200), amount, date: optDay(fd, "date", "Tarih"), note: optStr(fd, "note") } });
+        refresh();
+        return "İlave iş eklendi.";
+    });
+}
+
+export async function deleteExtra(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const del = await prisma.finProjectExtra.deleteMany({ where: { id: str(fd, "id"), project: { ledgerId: ledger.id } } });
+        must(del.count, "İlave iş");
+        refresh();
+        return "İlave iş silindi.";
+    });
+}
+
+/** Harcamadan müşteriden ekstra alınacak tutarı tahsilat planına (vadeli gelir) ekler */
+export async function planRebill(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const tx = await prisma.finTransaction.findFirst({ where: { id: str(fd, "id"), ledgerId: ledger.id, type: "EXPENSE", rebillAmount: { gt: 0 }, rebillPlanned: false }, select: { id: true, title: true, rebillAmount: true, projectId: true, project: { select: { clientId: true } } } });
+        if (!tx || !tx.projectId || !tx.rebillAmount) throw new FormError("Kayıt bulunamadı ya da zaten plana eklenmiş.");
+        await prisma.$transaction([
+            prisma.finTransaction.create({
+                data: {
+                    ledgerId: ledger.id, type: "INCOME", status: "PLANNED", date: day(fd, "date", "Tahsilat tarihi"), title: `Ekstra: ${tx.title}`.slice(0, 200),
+                    amount: tx.rebillAmount, currency: "TRY", fxRate: 1, amountTRY: tx.rebillAmount, vatAmount: 0, withholdingAmount: 0, projectId: tx.projectId, contactId: tx.project?.clientId ?? null,
+                },
+            }),
+            prisma.finTransaction.update({ where: { id: tx.id }, data: { rebillPlanned: true } }),
+        ]);
+        refresh();
+        return "Tahsilat planına eklendi.";
+    });
+}
+
 /** Projeyi "Teslim edildi" (DONE) ya da yeniden "Aktif" yapar (ana ekrandaki iki başlık) */
 export async function setProjectDelivered(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {

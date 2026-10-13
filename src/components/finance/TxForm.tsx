@@ -12,7 +12,7 @@ interface Opt { id: string; label: string }
 export interface TxInitial {
     id?: string; type?: "INCOME" | "EXPENSE" | "TRANSFER"; status?: "DONE" | "PLANNED"; date?: string; docDate?: string; docNo?: string; title?: string; note?: string;
     amount?: number; currency?: string; fxRate?: number; vatRate?: number | null; vatAmount?: number; withholdingAmount?: number;
-    accountId?: string | null; toAccountId?: string | null; toAmount?: number | null; categoryId?: string | null; projectId?: string | null; contactId?: string | null;
+    accountId?: string | null; toAccountId?: string | null; toAmount?: number | null; categoryId?: string | null; projectId?: string | null; contactId?: string | null; rebillAmount?: number | null;
 }
 interface Props {
     ledgerId: string; today: string;
@@ -129,6 +129,10 @@ export default function TxForm({ ledgerId, today, accounts, categories, projects
                             <select name="categoryId" defaultValue={initial.categoryId ?? ""} key={type}><option value="">— kalemsiz —</option>{cats.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
                         <label className="adm-field"><span className="adm-label">Proje</span>
                             <select name="projectId" defaultValue={initial.projectId ?? ""}><option value="">— projesiz —</option>{projects.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
+                        {type === "EXPENSE" && (
+                            <label className="adm-field"><span className="adm-label">Müşteriden ekstra alınacak (₺, projeli giderde)</span>
+                                <input name="rebillAmount" inputMode="decimal" defaultValue={initial.rebillAmount ? String(initial.rebillAmount).replace(".", ",") : ""} placeholder="Yoksa boş bırakın" autoComplete="off" /></label>
+                        )}
                         {!quick && (
                             <label className="adm-field"><span className="adm-label">{type === "INCOME" ? "Müşteri / cari" : "Tedarikçi / cari"}</span>
                                 <select name="contactId" defaultValue={initial.contactId ?? ""}><option value="">— cari yok —</option>{contacts.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
