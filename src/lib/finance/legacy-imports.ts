@@ -6,7 +6,7 @@ export interface LegacyExpense { amount: number; title: string; category?: strin
 export interface LegacyProject {
     key: string;
     name: string; client: string; status: "DONE" | "ACTIVE";
-    contractAmount: number; startDate: string; endDate: string; stage?: string; note?: string;
+    contractAmount: number; startDate?: string; endDate?: string; stage?: string; note?: string;
     extras: { title: string; amount: number }[];
     collections: { date: string; amount: number; title: string }[];
     defaultDate: string; // tarihi belli olmayan harcamalar için
@@ -37,6 +37,33 @@ export const LEGACY_IMPORTS: LegacyProject[] = [
             s(15000, "Hasan abi", U), s(80000, "Emrah", U), s(3500, "Moloz", N), s(30000, "Atilla", U), s(5000, "Sadaka", "Diğer gider"), s(40000, "Ercan", U), s(80000, "Hayrettin abi", U),
             s(15000, "Alçıpan", Y), s(150000, "Ekol", M), s(10000, "Raşit abi", U), s(20000, "Tezgâh", M), s(20000, "Hasan abi", U), f(3500, "Elektrik", E), f(190, "Nalbur", Y), f(1500, "Boya", "Boya"),
             s(29000, "Tezgâh", M), s(185, "Harcama"), s(630, "Harcama"), s(10200, "Ercan", U), s(17000, "Erdem", U), s(6000, "Temizlik", "Temizlik ve bakım"), f(1550, "Kapı stoper", Y), s(9000, "Hayrettin abi", U),
+        ],
+    },
+    {
+        key: "gulay-hanim",
+        name: "Gülay Hanım", client: "Gülay Hanım", status: "DONE",
+        contractAmount: 2_428_000, stage: "Teslim",
+        note: "Excel defterinden aktarıldı. Teklif 2.428.000 ₺, kalan alacak 48.000 ₺ (tahsil edilen 2.380.000 ₺). Defterde tarih yoktu: harcamalar ve tahsilat 30.06.2026 olarak girildi, iş başlangıç/bitiş tarihi boş. Defterdeki kâr: 476.143 ₺.",
+        extras: [],
+        collections: [{ date: "2026-06-30", amount: 2_380_000, title: "Tahsilat (toplam; tarihleri belli değil)" }],
+        defaultDate: "2026-06-30",
+        expenses: [
+            f(440, "Harcama"), s(70000, "Kadir abi", U), s(50000, "Atilla", U), s(20000, "Raşit abi", U), s(12375, "Elektrik", E), s(90, "Harcama"), s(25, "Harcama"),
+            s(27, "Harcama"), s(2500, "Yasir", U), s(2785, "Tesisat", Y), s(795, "Harcama"), s(4300, "Yutong", Y), s(35000, "Çelik kapı", Y), s(1100, "Yutong", Y),
+            s(225, "Harcama"), s(160, "Harcama"), s(44000, "Hasan abi", U), s(800, "Kanal", Y), s(28000, "Alçıpan", Y), s(350, "Harcama"), s(50, "Harcama"),
+            s(185, "Harcama"), s(750, "Harcama"), s(40000, "Raşit abi", U), s(1410, "Harcama"), s(800, "Harcama"), s(10000, "Moloz", N), s(1000, "Nakliye", N),
+            s(80000, "Hayrettin", U), s(20000, "Çelik kapı", Y), s(70000, "Atilla", U), s(50000, "Alçıpan", Y), s(100000, "Emrah", U), s(4250, "Kasa", Y),
+            s(50000, "Deniz boya", U), s(340, "Harcama"), s(26400, "Alçıpan", Y), s(20000, "Raşit abi", U), s(40000, "Kadir abi", U), s(30000, "Erdem", U),
+            f(4490, "Harcama"), s(30000, "Kadir abi", U), s(24000, "Deniz boya", U), f(10166, "Vana", Y), s(1450, "Karton", Y), s(75000, "Atilla", U),
+            s(13000, "Elektrik", E), s(60000, "Hasan abi", U), s(4550, "Elektrik", E), s(15000, "Selami", U), s(200, "Harcama"), s(3000, "Karot", U),
+            s(2000, "Payölçer", "Diğer gider"), s(1650, "Boya", "Boya"), s(350, "Elektrik", E), s(40000, "Tezgah", M), s(5000, "Moloz", N), s(20000, "Atilla", U),
+            s(4400, "Boya", "Boya"), s(125, "Harcama"), f(11800, "Kapı kolu", Y), s(100000, "Hayrettin", U), f(11900, "Evye", Y), s(6250, "Raşit abi", U),
+            s(1600, "Termosifon", Y), s(350, "Buat", Y), s(1750, "Harcama"), s(690, "Harcama"), s(954, "Harcama"), s(20000, "Deniz boya", U), s(350, "Harcama"),
+            s(1100, "Harcama"), s(60, "Harcama"), f(250, "Harcama"), s(135, "Harcama"), s(15000, "Kumaş", M), s(85000, "Hayrettin", U), s(40000, "Raşit abi", U),
+            s(570, "Harcama"), s(23000, "Petek körleme", U), s(40, "Harcama"), s(1300, "Lavabo", Y), s(200, "Harcama"), s(60000, "Hayrettin", U),
+            s(1200, "Yemek", "Yemek"), s(750, "Menfez", Y), f(3100, "Kapı stoperi", Y), s(10000, "Temizlik", "Temizlik ve bakım"), f(10000, "Çelik kapı", Y),
+            f(130000, "Emrah", U), s(100000, "Atilla", U), s(40000, "Tezgah", M), s(10000, "Alçıpan", Y), s(30000, "Berjel", M), f(290, "Harcama"), f(1680, "Harcama"),
+            s(100000, "Hayrettin", U),
         ],
     },
 ];

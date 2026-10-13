@@ -24,10 +24,10 @@ export async function importLegacyProject(ledgerId: string, p: LegacyProject) {
         const contact = (await tx.finContact.findFirst({ where: { ledgerId, name: { equals: p.client, mode: "insensitive" } }, select: { id: true } }))
             ?? (await tx.finContact.create({ data: { ledgerId, name: p.client, kind: "CUSTOMER" }, select: { id: true } }));
         const project = await tx.finProject.create({
-            data: { ledgerId, name: p.name, clientId: contact.id, status: p.status, contractAmount: p.contractAmount, startDate: day(p.startDate), endDate: day(p.endDate), stage: p.stage ?? null, note: p.note ?? null },
+            data: { ledgerId, name: p.name, clientId: contact.id, status: p.status, contractAmount: p.contractAmount, startDate: p.startDate ? day(p.startDate) : null, endDate: p.endDate ? day(p.endDate) : null, stage: p.stage ?? null, note: p.note ?? null },
             select: { id: true },
         });
-        await tx.finProjectExtra.createMany({ data: p.extras.map(e => ({ projectId: project.id, title: e.title, amount: e.amount, date: day(p.endDate) })) });
+        await tx.finProjectExtra.createMany({ data: p.extras.map(e => ({ projectId: project.id, title: e.title, amount: e.amount, date: day(p.endDate ?? p.defaultDate) })) });
         const base = { ledgerId, status: "DONE" as const, currency: "TRY", fxRate: 1, vatAmount: 0, withholdingAmount: 0, projectId: project.id, createdBy: "Excel aktarımı" };
         await tx.finTransaction.createMany({ data: p.collections.map(c => ({ ...base, type: "INCOME" as const, date: day(c.date), title: c.title, amount: c.amount, amountTRY: c.amount, contactId: contact.id })) });
         await tx.finTransaction.createMany({
