@@ -7,7 +7,8 @@ import { ITEMS, type Item } from "@/lib/nav";
 
 export default function AppNav() {
     const pathname = usePathname();
-    const active = (i: Item) => (i.href === "/" ? pathname === "/" : pathname === i.href || pathname.startsWith(`${i.href}/`) || !!i.match?.some(m => pathname === m || pathname.startsWith(`${m}/`)));
+    const matches = (i: Item) => !!i.match?.some(m => pathname === m || pathname.startsWith(`${m}/`));
+    const active = (i: Item) => (i.href === "/" ? pathname === "/" || matches(i) : pathname === i.href || pathname.startsWith(`${i.href}/`) || matches(i));
     return (
         <nav className="app-nav" aria-label="Ana menü">
             {ITEMS.map(i => (

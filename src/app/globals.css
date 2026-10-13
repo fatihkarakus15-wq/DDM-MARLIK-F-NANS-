@@ -317,3 +317,22 @@ pre.fin-probe { white-space: pre-wrap; word-break: break-all; font-size: 0.72rem
 @media print {
   .fin-tip { display: none; }
 }
+
+/* ── Projeler (ana ekran) ve hızlı harcama ── */
+.proj-list { list-style: none; margin: 0 0 18px; padding: 0; display: grid; gap: 12px; }
+.proj-card { display: grid; gap: 12px; padding: 16px; background: var(--white); border: 1px solid var(--cream-dim); border-radius: 14px; }
+.proj-card:active { background: #fbf9f5; }
+.proj-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.proj-name { display: block; font-size: 1.05rem; line-height: 1.25; }
+.proj-client { display: block; margin-top: 2px; color: var(--muted); font-size: .8rem; }
+.proj-nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.proj-nums small { display: block; color: var(--muted); font-size: .7rem; }
+.proj-nums b { display: block; font: 650 1.05rem var(--font-display); font-variant-numeric: tabular-nums; }
+.proj-add { display: flex; align-items: center; justify-content: center; height: 44px; border-radius: 12px; background: var(--navy); color: var(--cream); font-weight: 600; font-size: .92rem; }
+.quick { display: grid; gap: 12px; }
+.quick-main { display: grid; grid-template-columns: minmax(110px, 140px) 1fr; gap: 10px; }
+.quick-amount input { font-size: 1.4rem; font-weight: 650; }
+.quick-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.quick-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.quick-save { flex: 1 1 160px; height: 52px; font-size: 1.02rem; }
+.quick-card { border-color: var(--gold); }

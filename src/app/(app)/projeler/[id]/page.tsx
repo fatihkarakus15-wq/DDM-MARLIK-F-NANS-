@@ -14,6 +14,7 @@ import { Amount, Kpi } from "@/components/finance/ui";
 import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
+import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
 import { deleteProject, saveBudgetLine } from "../../actions";
 
 export const dynamic = "force-dynamic";
@@ -35,6 +36,19 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
         formOptions(ledger.id, rates),
     ]);
     const p = overview.find(x => x.id === id)!;
+    const used = await prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 });
+    const expenseOpts = opts.categories.filter(c => c.kind === "EXPENSE");
+    const favIds = used.map(u => u.categoryId!).filter(cid => expenseOpts.some(c => c.id === cid));
+    const leafLabel = (l: string) => l.split(" › ").pop()!;
+    // En çok kullanılanlar; eksik kalırsa şantiyede sık geçen kalemlerle tamamlanır
+    const PREFERRED = ["Yapı malzemesi", "Boya", "Yemek", "Taşeron hakedişi", "Usta / işçilik", "Yakıt", "Nakliye ve montaj", "Seramik / kaplama", "Elektrik ve aydınlatma"];
+    const picked = favIds.map(fid => expenseOpts.find(c => c.id === fid)!);
+    for (const name of PREFERRED) {
+        if (picked.length >= 6) break;
+        const c = expenseOpts.find(o => leafLabel(o.label) === name);
+        if (c && !picked.some(x => x.id === c.id)) picked.push(c);
+    }
+    const favorites = picked.map(c => ({ id: c.id, label: leafLabel(c.label) }));
     const status = PROJECT_STATUS[project.status];
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
     const budgeted = new Set(costs.compare.filter(c => c.budget > 0).map(c => c.categoryId));
@@ -50,6 +64,14 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
                 </div>
                 <div className="adm-actions"><Link className="btn btn-sm adm-btn-outline" href={`/projeler?duzenle=${id}#form`}>Projeyi düzenle</Link><Link className="btn btn-sm adm-btn-outline" href={`/hareketler?proje=${id}&donem=tumu`}>Tüm hareketler</Link></div>
             </div>
+
+            <section className="adm-card quick-card" id="ekle">
+                <div className="adm-card-head"><h2 className="adm-card-title">Harcama ekle</h2><span className="adm-card-note">{tl0(p.expense)} harcandı</span></div>
+                <div className="adm-card-body">
+                    {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
+                    <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} />
+                </div>
+            </section>
 
             <div className="adm-kpis">
                 <Kpi accent label="Sözleşme bedeli" value={p.contract != null ? tl0(p.contract) : "—"} note={p.contractLeft != null ? `faturalanmamış ${tl0(Math.max(0, p.contractLeft))}` : "bedel girilmemiş"} />
@@ -128,7 +150,7 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
             </section>
 
             <details className="adm-fold">
-                <summary>Bu projeye hareket ekle</summary>
+                <summary>Gelir (tahsilat) ya da ayrıntılı hareket ekle</summary>
                 <div className="adm-card-body">
                     <TxForm ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates} initial={{ type: "EXPENSE", projectId: id, contactId: undefined }} />
                 </div>

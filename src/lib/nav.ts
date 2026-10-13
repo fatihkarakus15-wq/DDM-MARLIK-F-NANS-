@@ -18,13 +18,13 @@ export const ICONS: Record<string, string> = {
 
 export interface Item { href: string; label: string; icon: keyof typeof ICONS; slot: "tab" | "more" | "desk"; match?: string[] }
 export const ITEMS: Item[] = [
-    { href: "/", label: "Özet", icon: "ozet", slot: "tab" },
+    { href: "/", label: "Projeler", icon: "projeler", slot: "tab", match: ["/projeler"] },
     { href: "/hareketler", label: "Hareketler", icon: "hareketler", slot: "tab" },
     { href: "/yeni", label: "Ekle", icon: "ekle", slot: "tab" },
     { href: "/vadeler", label: "Vadeler", icon: "vadeler", slot: "tab" },
-    { href: "/daha-fazla", label: "Daha fazla", icon: "daha", slot: "more", match: ["/hesaplar", "/projeler", "/cariler", "/cek-senet", "/nakit-akisi", "/yatirimlar", "/raporlar", "/ice-aktar", "/ayarlar"] },
+    { href: "/daha-fazla", label: "Daha fazla", icon: "daha", slot: "more", match: ["/ozet", "/hesaplar", "/cariler", "/cek-senet", "/nakit-akisi", "/yatirimlar", "/raporlar", "/ice-aktar", "/ayarlar"] },
+    { href: "/ozet", label: "Genel özet", icon: "ozet", slot: "desk" },
     { href: "/hesaplar", label: "Hesaplar", icon: "hesaplar", slot: "desk" },
-    { href: "/projeler", label: "Projeler", icon: "projeler", slot: "desk" },
     { href: "/cariler", label: "Cariler", icon: "cariler", slot: "desk" },
     { href: "/cek-senet", label: "Çek / Senet", icon: "cek", slot: "desk" },
     { href: "/nakit-akisi", label: "Nakit akışı", icon: "nakit", slot: "desk" },

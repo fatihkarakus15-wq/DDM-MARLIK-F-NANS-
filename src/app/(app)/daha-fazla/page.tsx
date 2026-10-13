@@ -8,8 +8,8 @@ import { logout } from "@/app/giris/actions";
 export const dynamic = "force-dynamic";
 
 const NOTES: Record<string, string> = {
+    "/ozet": "Nakit, alacak, borç, bu ay, 30 gün tahmini",
     "/hesaplar": "Banka, kasa, kredi kartı, POS bakiyeleri",
-    "/projeler": "Proje bazında gelir, harcama, kâr ve bütçe",
     "/cariler": "Müşteri, tedarikçi, taşeron bakiyeleri ve ekstre",
     "/cek-senet": "Aldığınız ve verdiğiniz çek / senetler",
     "/nakit-akisi": "Gün gün kasa tahmini ve senaryolar",
