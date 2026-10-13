@@ -20,5 +20,9 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 - **Telefon arayüzü**: alt sekme çubuğu (<900 px), yan menü (≥900 px) `components/AppNav.tsx`; "Ekle" `/yeni` (hızlı gider); `daha-fazla` diğer bölümler. Stil tek dosya `app/globals.css`.
 - Zamanlayıcı `/api/cron/finans` (günlük 05:00 UTC, `vercel.json`): kurları yeniler, tekrarlayan vadeleri üretir.
 
+## Arayüz (2026-10-13, "Şantiye modu")
+- Ana ekran projeler: satırda harcanan tutar + büyük **+** (`/projeler/<id>#ekle`). Proje sayfasının en üstü koyu tuş takımı (`components/finance/ProjectQuickAdd.tsx`, stiller `.sm*`): tutar, kalem düğmeleri (projede harcanan tutarla), Kaydet; not/hesap/tarih/fiş katlanır. Özet, bütçe ve grafikler katlı.
+- Hız: `ensureFreshRates` kur eskiyse sayfayı bekletmez (yenileme `after()` ile yanıttan sonra; `wait=true` yalnızca `/api/kur`). `(app)/loading.tsx` iskelet gösterir.
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.
