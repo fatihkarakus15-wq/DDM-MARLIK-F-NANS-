@@ -24,5 +24,10 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 - Ana ekran projeler: satırda harcanan tutar + büyük **+** (`/projeler/<id>#ekle`). Proje sayfasının en üstü koyu tuş takımı (`components/finance/ProjectQuickAdd.tsx`, stiller `.sm*`): tutar, kalem düğmeleri (projede harcanan tutarla), Kaydet; not/hesap/tarih/fiş katlanır. Özet, bütçe ve grafikler katlı.
 - Hız: `ensureFreshRates` kur eskiyse sayfayı bekletmez (yenileme `after()` ile yanıttan sonra; `wait=true` yalnızca `/api/kur`). `(app)/loading.tsx` iskelet gösterir.
 
+## Kullanıcılar ve yüzle giriş (2026-10-13)
+- Birden çok kullanıcı (en çok 5), hepsi aynı defterleri görür. **Yüz tanıma / parmak izi** WebAuthn geçiş anahtarıyla (`lib/passkey.ts`, `app/api/passkey/*`, `components/PasskeyButtons.tsx`): telefon yüzü kendisi doğrular, sunucuya yalnızca açık anahtar gelir; giriş ekranında e-posta yazmadan tek dokunuş. Şifre yedek olarak kalır ("Şifremi unuttum" SETUP_KEY ister).
+- Ayarlar > Kullanıcılar: bu cihazı kaydet, cihaz sil, davet bağlantısı (`inviteUser`, 7 gün, `/davet/<anahtar>`; davetli şifresiz hesap açılır, bağlantıyı açıp yüzünü kaydeder). Kayıtlı e-postaya yeni bağlantı = yeni telefon ekleme. Geçiş anahtarı alan adına bağlıdır: site adresi değişirse yeniden kaydedilmeli.
+- Göç `002-gecis-anahtarlari` (`app_passkeys`, `app_users.inviteHash/inviteExpires`): yayından sonra /kurulum "Veritabanını güncelle" (SETUP_KEY) çalıştırılmalı.
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.

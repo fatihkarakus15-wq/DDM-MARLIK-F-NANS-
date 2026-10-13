@@ -10,7 +10,9 @@ import { occurrences } from "@/lib/finance/recurring";
 import { addDays, fmtDay, today, ymd } from "@/lib/finance/dates";
 import { money } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
-import { changePassword, createLedger, deleteCategory, deleteRecurring, deleteRule, regenerateRecurring, renameLedger, saveCategory, saveManualRate, saveRecurring, saveRule, signOutOthers } from "../actions";
+import { changePassword, createLedger, deleteCategory, deleteRecurring, deleteRule, regenerateRecurring, renameLedger, saveCategory, saveManualRate, saveRecurring, saveRule, signOutOthers, inviteUser, deletePasskey } from "../actions";
+import { PasskeyRegister } from "@/components/PasskeyButtons";
+import { getUser } from "@/lib/auth";
 import InstallHint from "@/components/InstallHint";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +20,11 @@ export const dynamic = "force-dynamic";
 /** Ayarlar: defter, kalemler, tekrarlayan ödemeler, ekstre kuralları, kur kaynağı. */
 export default async function Ayarlar({ searchParams }: { searchParams: Promise<{ kalem?: string; tekrar?: string; sina?: string }> }) {
     await requireFinancePage();
+    const me = (await getUser())!;
+    const [users, myKeys] = await Promise.all([
+        prisma.appUser.findMany({ orderBy: { createdAt: "asc" }, select: { id: true, email: true, name: true, _count: { select: { passkeys: true } } } }),
+        prisma.appPasskey.findMany({ where: { userId: me.id }, orderBy: { createdAt: "asc" }, select: { id: true, name: true, createdAt: true, lastUsedAt: true } }),
+    ]);
     const sp = await searchParams;
     const { ledger } = await activeLedger();
     const rates = await loadRates();
@@ -53,6 +60,33 @@ export default async function Ayarlar({ searchParams }: { searchParams: Promise<
                     <AdminForm action={createLedger} className="adm-inline" >
                         <label className="adm-field"><span className="adm-label">Yeni defter ekle (ör. Kişisel)</span><input name="name" required /></label>
                         <SubmitButton className="btn btn-sm adm-btn-outline">Defter ekle</SubmitButton>
+                    </AdminForm>
+                </div>
+            </section>
+
+            <section className="adm-card" id="kullanicilar">
+                <div className="adm-card-head"><h2 className="adm-card-title">Kullanıcılar ve yüzle giriş</h2><span className="adm-card-note">Şifre yerine telefonun yüz tanıma / parmak izi</span></div>
+                <div className="adm-card-body">
+                    <p className="adm-help">Şu an giriş yapan: <b>{me.email}</b>. Bu telefonu kaydederseniz giriş ekranında tek dokunuşla yüzünüzle girersiniz.</p>
+                    <PasskeyRegister />
+                    {myKeys.length > 0 && (
+                        <ul className="pk-list">
+                            {myKeys.map(k => (
+                                <li key={k.id}>
+                                    <span>{k.name ?? "Cihaz"} <small className="muted">· {fmtDay(k.createdAt)}{k.lastUsedAt ? ` · son giriş ${fmtDay(k.lastUsedAt)}` : ""}</small></span>
+                                    <AdminForm action={deletePasskey} className="adm-inline"><input type="hidden" name="id" value={k.id} /><SubmitButton className="btn btn-sm adm-btn-danger" pendingText="…" confirm="Bu cihazın kaydı silinsin mi?">Sil</SubmitButton></AdminForm>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    <h3 className="pk-sub">Kullanıcılar</h3>
+                    <ul className="pk-list">
+                        {users.map(u => <li key={u.id}><span>{u.name ? `${u.name} · ` : ""}{u.email} <small className="muted">· {u._count.passkeys} cihaz</small></span></li>)}
+                    </ul>
+                    <AdminForm action={inviteUser} className="adm-form">
+                        <label className="adm-field"><span className="adm-label">Ad (yeni kullanıcı için)</span><input name="name" placeholder="Ör. Semih Bey" /></label>
+                        <label className="adm-field"><span className="adm-label">E-posta</span><input name="email" type="email" inputMode="email" required /></label>
+                        <div className="adm-form-foot"><SubmitButton>Davet bağlantısı oluştur</SubmitButton><span className="adm-help">Bağlantıyı kişiye WhatsApp ile gönderin; telefonunda açıp yüzünü kaydeder. Kayıtlı e-posta yazarsanız o kişiye yeni telefon bağlantısı üretir.</span></div>
                     </AdminForm>
                 </div>
             </section>

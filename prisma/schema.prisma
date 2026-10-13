@@ -22,9 +22,29 @@ model AppUser {
   name         String?
   passwordHash String
   epoch        Int      @default(0) // Artınca bu kullanıcının bütün oturumları kapanır
+  inviteHash   String?  // Davet bağlantısı anahtarının sha256 özeti (yüz/parmak izi kaydı için)
+  inviteExpires DateTime?
   createdAt    DateTime @default(now())
+  passkeys     AppPasskey[]
 
   @@map("app_users")
+}
+
+// Yüz tanıma / parmak izi ile giriş (WebAuthn geçiş anahtarı): telefonun kendi kilidi kullanılır, yüz verisi sunucuya gelmez
+model AppPasskey {
+  id           String   @id @default(cuid())
+  userId       String
+  user         AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialId String   @unique
+  publicKey    String   // base64url
+  counter      Int      @default(0)
+  transports   String?  // virgülle ayrılmış
+  name         String?
+  createdAt    DateTime @default(now())
+  lastUsedAt   DateTime?
+
+  @@index([userId])
+  @@map("app_passkeys")
 }
 
 // ─────────────────────────────────────────

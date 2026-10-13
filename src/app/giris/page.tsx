@@ -3,6 +3,7 @@ import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import { getUser } from "@/lib/auth";
 import { dbState, hasUsers } from "@/lib/db-state";
 import Link from "next/link";
+import { PasskeyLogin } from "@/components/PasskeyButtons";
 import { login } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,8 @@ export default async function Giris() {
                 <div className="gate-mark" aria-hidden="true" />
                 <h1>Ofis Finans</h1>
                 <p className="muted">Devam etmek için giriş yapın.</p>
+                <PasskeyLogin />
+                <p className="muted" style={{ margin: "14px 0 6px" }}>ya da şifreyle:</p>
                 <AdminForm action={login} className="adm-form">
                     <label className="adm-field"><span className="adm-label">E-posta</span><input name="email" type="email" autoComplete="username" inputMode="email" required autoFocus /></label>
                     <label className="adm-field"><span className="adm-label">Şifre</span><input name="password" type="password" autoComplete="current-password" required /></label>

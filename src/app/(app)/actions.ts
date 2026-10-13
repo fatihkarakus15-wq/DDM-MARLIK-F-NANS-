@@ -5,13 +5,14 @@
  * Hareket oluşturma / düzenleme dosya aldığı için API'dedir (/api/hareket).
  */
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { FormError, bool, num, optNum, optStr, run, str, type ActionState } from "@/lib/form";
 import { requireFinance } from "@/lib/finance/access";
 import { LEDGER_COOKIE, assertOwned, ledgerById } from "@/lib/finance/ledger";
 import { startSession, hashPassword, verifyPassword } from "@/lib/auth";
+import { hashToken, newToken } from "@/lib/passkey";
 import { isCurrency, r2 } from "@/lib/finance/money";
 import { parseDay, ymd } from "@/lib/finance/dates";
 import { loadRates, rateTRY, setManualRate } from "@/lib/finance/rates";
@@ -592,5 +593,40 @@ export async function signOutOthers(): Promise<ActionState> {
         const updated = await prisma.appUser.update({ where: { id: me.id }, data: { epoch: { increment: 1 } }, select: { id: true, epoch: true } });
         await startSession(updated);
         return "Diğer cihazlardaki oturumlar kapatıldı.";
+    });
+}
+
+/** Yeni kullanıcı davet et (ya da var olan kullanıcıya yeni telefon eklemek için yeni bağlantı üret). Bağlantı 7 gün geçerli. */
+export async function inviteUser(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        await requireFinance();
+        const email = str(fd, "email", "E-posta").toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new FormError("Geçerli bir e-posta yazın.");
+        const name = String(fd.get("name") ?? "").trim() || null;
+        const token = newToken();
+        const data = { inviteHash: hashToken(token), inviteExpires: new Date(Date.now() + 7 * 24 * 3600 * 1000) };
+        const existing = await prisma.appUser.findUnique({ where: { email }, select: { id: true } });
+        if (existing) await prisma.appUser.update({ where: { id: existing.id }, data });
+        else {
+            if ((await prisma.appUser.count()) >= 5) throw new FormError("En fazla 5 kullanıcı eklenebilir.");
+            // Şifre belirlenmemiş hesap: rastgele şifre, kimse bilmez; giriş yalnızca yüz/parmak iziyle (ya da "Şifremi unuttum")
+            await prisma.appUser.create({ data: { email, name, passwordHash: await hashPassword(newToken()), ...data } });
+        }
+        const h = await headers();
+        const host = h.get("x-forwarded-host") ?? h.get("host");
+        const proto = h.get("x-forwarded-proto") ?? "https";
+        revalidatePath("/ayarlar");
+        return `Davet bağlantısı (7 gün geçerli, yalnızca ${email} için telefonuna gönderin): ${proto}://${host}/davet/${token}`;
+    });
+}
+
+export async function deletePasskey(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const me = await requireFinance();
+        const n = await prisma.appPasskey.count({ where: { userId: me.id } });
+        const del = await prisma.appPasskey.deleteMany({ where: { id: str(fd, "id"), userId: me.id } });
+        if (!del.count) throw new FormError("Kayıt bulunamadı.");
+        revalidatePath("/ayarlar");
+        return n <= 1 ? "Kayıt silindi. Artık şifreyle girmeniz gerekir." : "Kayıt silindi.";
     });
 }
