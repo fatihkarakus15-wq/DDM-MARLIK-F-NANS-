@@ -13,12 +13,19 @@ export const LEDGER_COOKIE = "ofisfinans_defter";
 
 export interface LedgerInfo { id: string; slug: string; name: string }
 
+let ledgersSeen = false;
+const seededLedgers = new Set<string>();
+
 async function ensureLedgers() {
+    if (ledgersSeen) return;
+    ledgersSeen = true;
     if ((await prisma.finLedger.count()) === 0) await prisma.finLedger.createMany({ data: DEFAULT_LEDGERS, skipDuplicates: true });
 }
 
 /** Aynı anda iki istek ilk kez açılırsa kalemler ikilenmesin diye işlem kilidi (pg advisory) altında yazılır */
 async function ensureCategories(ledger: LedgerInfo) {
+    if (seededLedgers.has(ledger.id)) return;
+    seededLedgers.add(ledger.id);
     if ((await prisma.finCategory.count({ where: { ledgerId: ledger.id } })) > 0) return;
     const trees = defaultCategories();
     await prisma.$transaction(async tx => {

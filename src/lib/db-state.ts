@@ -4,12 +4,17 @@ import { MIGRATIONS, type Migration } from "@/lib/migrations";
 
 export type DbState = { state: "empty" | "pending" | "ok"; pending: Migration[] };
 
+/** Göçler yalnızca ileri gider: bir kez "ok" görüldüyse bu sunucu örneği için tekrar sorgulanmaz (sayfa başına 2 sorgu azalır) */
+let okSeen = false;
+
 /** empty: hiç kurulmamış · pending: bekleyen göç var · ok: güncel */
 export async function dbState(): Promise<DbState> {
+    if (okSeen) return { state: "ok", pending: [] };
     const [row] = await prisma.$queryRaw<{ t: string | null }[]>`SELECT to_regclass('public.app_migrations')::text AS t`;
     if (!row?.t) return { state: "empty", pending: MIGRATIONS };
     const done = new Set((await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM app_migrations`).map(r => r.id));
     const pending = MIGRATIONS.filter(m => !done.has(m.id));
+    if (!pending.length) okSeen = true;
     return { state: pending.length ? "pending" : "ok", pending };
 }
 
