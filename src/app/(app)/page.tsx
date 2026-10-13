@@ -14,6 +14,22 @@ import { LEGACY_IMPORTS } from "@/lib/finance/legacy-imports";
 export const dynamic = "force-dynamic";
 
 /** Ana ekran: projelerin adları. Üstte "Aktif" ve "Teslim edilenler"; bir projeye dokununca harcama girişi açılır. */
+function LegacyCard({ l }: { l: (typeof LEGACY_IMPORTS)[number] }) {
+    const total = l.contractAmount + l.extras.reduce((a, e) => a + e.amount, 0);
+    const where = l.status === "DONE" ? "Teslim edilenlere" : "Aktif projelere";
+    return (
+        <section className="due-card" aria-label="Aktarılmaya hazır geçmiş iş">
+            <h2>Aktarılmaya hazır geçmiş iş</h2>
+            <div className="due-total" style={{ fontSize: "1.15rem" }}>{l.name}</div>
+            <p style={{ margin: "6px 0 10px", fontSize: ".85rem", color: "#a7c9bd" }}>Toplam iş {tl0(total)} · {l.collections.length} tahsilat · {l.expenses.length} harcama (Excel defterinden)</p>
+            <AdminForm action={importLegacy} className="adm-form">
+                <input type="hidden" name="key" value={l.key} />
+                <SubmitButton confirm={`“${l.name}” ${where.toLocaleLowerCase("tr")} eklensin mi?`} pendingText="Ekleniyor…">{where} aktar</SubmitButton>
+            </AdminForm>
+        </section>
+    );
+}
+
 function ProjectList({ items }: { items: { id: string; code: string | null; name: string; client: string | null; expense: number }[] }) {
     return (
         <ul className="pl-list">
@@ -79,26 +95,17 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                 </section>
             ) : <p className="pl-empty">Bu ay (ve gecikmiş) alınacak tahsilat yok. Projelerin Tahsilat planına tarih ve tutar ekleyebilirsiniz.</p>)}
 
-            {tab === "aktif" && (active.length === 0 ? <p className="pl-empty">Aktif proje yok. Aşağıdan yeni proje ekleyin.</p> : <ProjectList items={active} />)}
+            {tab === "aktif" && (
+                <>
+                    {pending.filter(l => l.status === "ACTIVE").map(l => <LegacyCard key={l.key} l={l} />)}
+                    {active.length === 0 && !pending.some(l => l.status === "ACTIVE") ? <p className="pl-empty">Aktif proje yok. Aşağıdan yeni proje ekleyin.</p> : <ProjectList items={active} />}
+                </>
+            )}
 
             {tab === "teslim" && (
                 <>
-            {pending.map(l => {
-                const total = l.contractAmount + l.extras.reduce((a, e) => a + e.amount, 0);
-                return (
-                    <section className="due-card" key={l.key} aria-label="Aktarılmaya hazır geçmiş iş">
-                        <h2>Aktarılmaya hazır geçmiş iş</h2>
-                        <div className="due-total" style={{ fontSize: "1.15rem" }}>{l.name}</div>
-                        <p style={{ margin: "6px 0 10px", fontSize: ".85rem", color: "#a7c9bd" }}>Toplam iş {tl0(total)} · {l.collections.length} tahsilat · {l.expenses.length} harcama (Excel defterinden)</p>
-                        <AdminForm action={importLegacy} className="adm-form">
-                            <input type="hidden" name="key" value={l.key} />
-                            <SubmitButton confirm={`“${l.name}” teslim edilenlere eklensin mi?`} pendingText="Ekleniyor…">Teslim edilenlere aktar</SubmitButton>
-                        </AdminForm>
-                    </section>
-                );
-            })}
-
-                    {delivered.length === 0 && pending.length === 0 ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
+            {pending.filter(l => l.status === "DONE").map(l => <LegacyCard key={l.key} l={l} />)}
+                    {delivered.length === 0 && !pending.some(l => l.status === "DONE") ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
                 </>
             )}
 

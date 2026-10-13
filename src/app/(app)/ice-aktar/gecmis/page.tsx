@@ -35,7 +35,7 @@ export default async function Gecmis() {
                             {has(p.name) ? <p className="adm-help">Bu iş zaten ekli. <Link className="adm-link" href="/?durum=teslim">Teslim edilenlere git</Link></p> : (
                                 <AdminForm action={importLegacy} className="adm-form">
                                     <input type="hidden" name="key" value={p.key} />
-                                    <div className="adm-form-foot"><SubmitButton confirm={`“${p.name}” projesi teslim edilenlere eklensin mi?`} pendingText="Ekleniyor…">Teslim edilenlere ekle</SubmitButton><span className="adm-help">Bir kez eklenir; aynı iş tekrar eklenmez.</span></div>
+                                    <div className="adm-form-foot"><SubmitButton confirm={`“${p.name}” projesi eklensin mi?`} pendingText="Ekleniyor…">{p.status === "DONE" ? "Teslim edilenlere ekle" : "Aktif projelere ekle"}</SubmitButton><span className="adm-help">Bir kez eklenir; aynı iş tekrar eklenmez.</span></div>
                                 </AdminForm>
                             )}
                         </div>
