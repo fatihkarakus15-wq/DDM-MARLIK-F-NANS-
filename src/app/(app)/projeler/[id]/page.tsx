@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addCollection, addExtra, addProjectItem, deleteExtra, deleteProject, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
+import { addCollection, addExtra, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +59,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     }
     const spentBy = new Map(costs.compare.map(c => [c.categoryId, c.actual]));
     const favorites = picked.slice(0, 8).map(c => ({ id: c.id, label: leafLabel(c.label), spent: spentBy.get(c.id) }));
+    const allTxCount = await prisma.finTransaction.count({ where: { ledgerId: ledger.id, projectId: id } });
     const status = PROJECT_STATUS[project.status];
     // Kim ne harcadı: kişi başı toplam, eşit paylaşım ve "kim kime ne kadar ödemeli"
     const who = opts.people.map(p => ({ ...p, total: spent.find(x => x.spenderId === p.id)?._sum.amountTRY ?? 0, count: spent.find(x => x.spenderId === p.id)?._count ?? 0 }));
@@ -375,7 +376,11 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                     <AdminForm action={deleteProject} className="adm-inline">
                         <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={id} />
                         <SubmitButton className="btn btn-sm adm-btn-danger" confirm="Proje silinsin mi? Hareketi varsa silinemez.">Projeyi sil</SubmitButton>
-                        <span className="adm-help">Hareketi olan proje silinemez; durumunu Tamamlandı ya da İptal yapın.</span>
+                        <span className="adm-help">Hareketi olan proje bu düğmeyle silinemez; aşağıdaki düğmeyi kullanın.</span>
+                    </AdminForm>
+                    <AdminForm action={deleteProjectWithData} className="adm-inline" >
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={id} />
+                        <SubmitButton className="btn btn-sm adm-btn-danger" confirm={`“${project.name}” projesi, ${allTxCount} harcama / tahsilat kaydı ve ilave işleriyle BİRLİKTE silinsin mi? Bu işlem geri alınamaz.`} pendingText="Siliniyor…">Projeyi ve bütün kayıtlarını sil</SubmitButton>
                     </AdminForm>
                 </div>
             </section>

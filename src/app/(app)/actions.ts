@@ -296,6 +296,24 @@ export async function deleteProject(_: ActionState, fd: FormData): Promise<Actio
     });
 }
 
+/** Projeyi bütün hareketleriyle (harcama, tahsilat, ilave iş, bütçe) siler. Geri alınamaz; çek / senede bağlı hareket varsa silmez. */
+export async function deleteProjectWithData(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const id = str(fd, "id");
+        const p = await prisma.finProject.findFirst({ where: { id, ledgerId: ledger.id }, select: { name: true } });
+        if (!p) throw new FormError("Proje bulunamadı.");
+        const linked = await prisma.finCheque.count({ where: { OR: [{ projectId: id }, { transaction: { projectId: id } }] } });
+        if (linked > 0) throw new FormError(`${p.name} projesine bağlı ${linked} çek / senet var; önce onları silin.`);
+        await prisma.$transaction([
+            prisma.finTransaction.deleteMany({ where: { ledgerId: ledger.id, projectId: id } }),
+            prisma.finProject.delete({ where: { id } }),
+        ]);
+        refresh();
+        redirect("/");
+    });
+}
+
 export async function saveBudgetLine(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
         const ledger = await ledgerOf(fd);
