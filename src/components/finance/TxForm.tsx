@@ -129,7 +129,7 @@ export default function TxForm({ ledgerId, today, accounts, categories, projects
                             <select name="categoryId" defaultValue={initial.categoryId ?? ""} key={type}><option value="">— kalemsiz —</option>{cats.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}</select></label>
                         <label className="adm-field"><span className="adm-label">Proje</span>
                             <select name="projectId" defaultValue={initial.projectId ?? ""}><option value="">— projesiz —</option>{projects.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
-                        {type === "EXPENSE" && people.length > 0 && (
+                        {type === "EXPENSE" && editing && people.length > 0 && (
                             <label className="adm-field"><span className="adm-label">Harcamayı yapan</span>
                                 <select name="spenderId" defaultValue={initial.spenderId ?? meId ?? people[0].id}>{people.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}</select></label>
                         )}

@@ -97,7 +97,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
 
             <div id="ekle">
                 {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} people={opts.people} meId={me.id} key={kalem ?? "x"} />
+                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
             </div>
 
             <h2 className="sm-h">Son harcamalar <span>· toplam {tl0(p.expense)}</span></h2>
