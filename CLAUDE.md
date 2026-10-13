@@ -40,5 +40,8 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 - Her gider `FinTransaction.spenderId` (AppUser.id) taşır: yeni giderde varsayılan giriş yapan kişi (`/api/hareket`), giriş yapan kişi otomatik yazılır (seçim yok); yalnızca mevcut harcama düzenlenirken TxForm'da "Harcamayı yapan" seçiminden değişir. Proje sayfasında **Kim ne harcadı**: kişi başı toplam, eşit paylaşım ve "kim kime ne kadar ödemeli" (`#kimharcadi`); kimin yaptığı belirtilmemiş eski harcamalar hesaba girmez. Göç `005-harcayan-kisi`.
 - Ofis sayfasında **Maaşlar** (`addSalary`): kişi adı + aylık maaş → "Maaş · Kişi" aylık tekrarlayan gider (kalem "Maaş"); sabit giderlerden ayrı listelenir.
 
+## Geçmiş işleri aktarma (2026-10-13)
+- Excel defterlerinden hazırlanan işler `lib/finance/legacy-imports.ts` içinde paket olarak durur (proje, müşteri, iş bedeli, ilave işler, tahsilatlar, harcamalar + kim harcadı); **Daha fazla > İçe aktar > Geçmiş işler** sayfasında "Teslim edilenlere ekle" ile `importLegacyProject` yazar (tek işlem, aynı adlı proje varsa eklemez). Kayıtlar hesapsız (DONE, accountId boş): hesap bakiyeleri değişmez. Yeni iş eklemek için pakete bir kayıt ekle. İlk paket: Köse ailesi (toplam teklif 849.000 = 600.000 + 249.000 ilave; harcama 618.452,50; tahsilat 734.000; tarihsiz harcamalar 18.02.2026).
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.

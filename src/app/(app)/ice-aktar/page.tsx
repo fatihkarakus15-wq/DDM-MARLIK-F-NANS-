@@ -26,6 +26,10 @@ export default async function IceAktar() {
             </div>
 
             <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">Geçmiş işler (Excel defterlerinden)</h2><Link className="adm-link" href="/ice-aktar/gecmis">Aç</Link></div>
+            </section>
+
+            <section className="adm-card">
                 <div className="adm-card-head"><h2 className="adm-card-title">Banka ekstresi (CSV)</h2><Link className="adm-link" href="/ayarlar#kurallar">Ekstre kuralları</Link></div>
                 <div className="adm-card-body">
                     {opts.accounts.length === 0
