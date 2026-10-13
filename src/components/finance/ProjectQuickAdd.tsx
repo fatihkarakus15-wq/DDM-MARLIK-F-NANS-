@@ -7,13 +7,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Opt { id: string; label: string }
-interface Props { ledgerId: string; projectId: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Opt[] }
+interface Props { ledgerId: string; projectId: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Opt[]; initialCategoryId?: string }
 
 const KEY = "ofis-finans:son-hesap";
 
-export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites }: Props) {
+export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites, initialCategoryId }: Props) {
     const router = useRouter();
-    const [categoryId, setCategoryId] = useState("");
+    const [categoryId, setCategoryId] = useState(initialCategoryId ?? "");
     const [accountId, setAccountId] = useState(() => {
         try { const saved = localStorage.getItem(KEY); if (saved && accounts.some(a => a.id === saved)) return saved; } catch { /* depolama kapalı */ }
         return accounts[0]?.id ?? "";
@@ -34,7 +34,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             if (!res.ok || !json?.success) { setMsg({ ok: false, text: json?.error ?? "Kaydedilemedi." }); return; }
             try { localStorage.setItem(KEY, accountId); } catch { /* depolama kapalı */ }
             const amount = String(fd.get("amount"));
-            form.reset(); setCategoryId("");
+            form.reset(); setCategoryId(initialCategoryId ?? "");
             setMsg({ ok: true, text: `${amount} ₺ kaydedildi.` });
             router.refresh();
         } catch {

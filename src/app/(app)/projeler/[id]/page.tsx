@@ -15,13 +15,14 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { deleteProject, saveBudgetLine } from "../../actions";
+import { addProjectItem, deleteProject, saveBudgetLine } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjeDetay({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjeDetay({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ kalem?: string }> }) {
     await requireFinancePage();
     const { id } = await params;
+    const { kalem } = await searchParams;
     const { ledger } = await activeLedger();
     const project = await prisma.finProject.findFirst({ where: { id, ledgerId: ledger.id }, include: { client: { select: { id: true, name: true } } } });
     if (!project) notFound();
@@ -42,9 +43,10 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
     const leafLabel = (l: string) => l.split(" › ").pop()!;
     // En çok kullanılanlar; eksik kalırsa şantiyede sık geçen kalemlerle tamamlanır
     const PREFERRED = ["Yapı malzemesi", "Boya", "Yemek", "Taşeron hakedişi", "Usta / işçilik", "Yakıt", "Nakliye ve montaj", "Seramik / kaplama", "Elektrik ve aydınlatma"];
-    const picked = favIds.map(fid => expenseOpts.find(c => c.id === fid)!);
+    const projectItems = costs.compare.map(c => c.categoryId).filter((x): x is string => !!x && expenseOpts.some(c => c.id === x));
+    const picked = [...new Set([...projectItems, ...favIds])].map(fid => expenseOpts.find(c => c.id === fid)!);
     for (const name of PREFERRED) {
-        if (picked.length >= 6) break;
+        if (picked.length >= 8) break;
         const c = expenseOpts.find(o => leafLabel(o.label) === name);
         if (c && !picked.some(x => x.id === c.id)) picked.push(c);
     }
@@ -69,7 +71,7 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
                 <div className="adm-card-head"><h2 className="adm-card-title">Harcama ekle</h2><span className="adm-card-note">{tl0(p.expense)} harcandı</span></div>
                 <div className="adm-card-body">
                     {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                    <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} />
+                    <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
                 </div>
             </section>
 
@@ -93,15 +95,23 @@ export default async function ProjeDetay({ params }: { params: Promise<{ id: str
             </div>
 
             <section className="adm-card">
-                <div className="adm-card-head"><h2 className="adm-card-title">Bütçe ↔ gerçekleşen (kalem bazında)</h2><span className="adm-card-note">Bütçeyi kalem kalem girin; ▲ aşılan kalemleri gösterir.</span></div>
-                {costs.compare.length === 0 ? <p className="adm-empty">Bütçe ya da harcama yok.</p> : (
+                <div className="adm-card-head"><h2 className="adm-card-title">Harcama kalemleri</h2><span className="adm-card-note">Bu projedeki kalemler, harcanan ve bütçe. ▲ aşılanları gösterir.</span></div>
+                <div className="adm-card-body" style={{ borderBottom: "1px solid var(--cream-dim)" }}>
+                    <AdminForm action={addProjectItem} className="adm-inline">
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="projectId" value={id} />
+                        <label className="adm-field"><span className="adm-label">Yeni kalem ekle (ör. Seramik, Elektrik, Marangoz)</span><input name="name" required /></label>
+                        <label className="adm-field" style={{ maxWidth: 150 }}><span className="adm-label">Bütçe ₺ (isteğe bağlı)</span><input name="amountTL" inputMode="decimal" /></label>
+                        <SubmitButton>Kalemi ekle</SubmitButton>
+                    </AdminForm>
+                </div>
+                {costs.compare.length === 0 ? <p className="adm-empty">Bu projede henüz kalem yok. Yukarıdan ekleyin ya da doğrudan “Harcama ekle” ile girin.</p> : (
                     <div className="adm-table-wrap">
                         <table className="adm-table">
                             <thead><tr><th>Kalem</th><th className="num">Gerçekleşen</th><th>Kullanım</th><th className="num">Kalan</th><th>Bütçe (₺)</th></tr></thead>
                             <tbody>
                                 {costs.compare.map(c => (
                                     <tr key={c.categoryId ?? "none"}>
-                                        <td>{c.label}</td>
+                                        <td>{c.categoryId ? <Link className="adm-link" href={`/projeler/${id}?kalem=${c.categoryId}#ekle`}>+ {c.label}</Link> : c.label}</td>
                                         <td className="num">{tl0(c.actual)}</td>
                                         <td>{c.budget > 0 ? <><div className={`fin-meter${c.actual > c.budget ? " over" : ""}`}><span style={{ width: `${Math.min(100, (c.actual / c.budget) * 100)}%` }} /></div><span className={`fin-sub${c.actual > c.budget ? " fin-neg" : ""}`}>{c.actual > c.budget ? "▲ aşıldı " : ""}{pct(c.usedPct)}</span></> : <span className="muted">—</span>}</td>
                                         <td className="num">{c.budget > 0 ? <Amount value={c.diff} digits={0} /> : "—"}</td>

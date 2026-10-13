@@ -205,6 +205,24 @@ export async function saveBudgetLine(_: ActionState, fd: FormData): Promise<Acti
     });
 }
 
+/** Projeye harcama kalemi ekler: aynı adlı gider kalemi yoksa oluşturur, projeye bağlar (bütçe isteğe bağlı) */
+export async function addProjectItem(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const projectId = str(fd, "projectId");
+        await assertOwned(ledger.id, { projectId });
+        const name = str(fd, "name", "Kalem adı").slice(0, 80);
+        const budget = r2(optNum(fd, "amountTL", "Bütçe") ?? 0);
+        const same = await prisma.finCategory.findMany({ where: { ledgerId: ledger.id, kind: "EXPENSE", name: { equals: name, mode: "insensitive" } }, select: { id: true, isActive: true }, orderBy: { parentId: "asc" } });
+        let categoryId = same[0]?.id;
+        if (categoryId && !same[0].isActive) await prisma.finCategory.update({ where: { id: categoryId }, data: { isActive: true } });
+        if (!categoryId) categoryId = (await prisma.finCategory.create({ data: { ledgerId: ledger.id, name, kind: "EXPENSE" }, select: { id: true } })).id;
+        await prisma.finBudgetLine.upsert({ where: { projectId_categoryId: { projectId, categoryId } }, create: { projectId, categoryId, amountTL: budget }, update: budget > 0 ? { amountTL: budget } : {} });
+        refresh();
+        return `${name} kalemi projeye eklendi. Şimdi altındaki “+ harcama” ile tutar girebilirsiniz.`;
+    });
+}
+
 export async function deleteBudgetLine(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
         const ledger = await ledgerOf(fd);
