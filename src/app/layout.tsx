@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import MoneyFormat from "@/components/MoneyFormat";
 import RegisterSW from "@/components/RegisterSW";
 import "./globals.css";
 
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <body>
                 {children}
                 <RegisterSW />
+                <MoneyFormat />
             </body>
         </html>
     );

@@ -20,7 +20,10 @@ export function optStr(fd: FormData, name: string): string | null {
 }
 
 export function num(fd: FormData, name: string, label = name, { min = 0 }: { min?: number } = {}): number {
-    const raw = String(fd.get(name) ?? "").trim().replace(",", ".");
+    // Türkçe biçim: 1.250.000,50 (nokta binlik, virgül ondalık); nokta ondalık da kabul (1250.5)
+    let raw = String(fd.get(name) ?? "").trim().replace(/\s/g, "");
+    if (raw.includes(",")) raw = raw.replace(/\./g, "").replace(",", ".");
+    else if (/^-?\d{1,3}(\.\d{3})+$/.test(raw)) raw = raw.replace(/\./g, "");
     const v = Number(raw);
     if (raw === "" || !Number.isFinite(v)) throw new FormError(`${label} geçerli bir sayı olmalı.`);
     if (v < min) throw new FormError(`${label} en az ${min} olmalı.`);
