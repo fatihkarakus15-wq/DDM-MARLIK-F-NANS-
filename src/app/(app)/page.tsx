@@ -8,6 +8,8 @@ import { money, tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import InstallHint from "@/components/InstallHint";
 import { saveProject } from "./actions";
+import { importLegacy } from "./ice-aktar/gecmis/actions";
+import { LEGACY_IMPORTS } from "@/lib/finance/legacy-imports";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +33,8 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
     const delivered = all.filter(p => p.status === "DONE");
     const showDelivered = durum === "teslim";
     const list = showDelivered ? delivered : active;
+    // Excel defterinden hazırlanmış, henüz eklenmemiş geçmiş işler (Teslim edilenler sekmesinde tek dokunuşla eklenir)
+    const pending = LEGACY_IMPORTS.filter(l => !all.some(p => p.name.toLocaleLowerCase("tr") === l.name.toLocaleLowerCase("tr")));
 
     return (
         <div>
@@ -57,7 +61,22 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                 </section>
             )}
 
-            {list.length === 0 ? (
+            {showDelivered && pending.map(l => {
+                const total = l.contractAmount + l.extras.reduce((a, e) => a + e.amount, 0);
+                return (
+                    <section className="due-card" key={l.key} aria-label="Aktarılmaya hazır geçmiş iş">
+                        <h2>Aktarılmaya hazır geçmiş iş</h2>
+                        <div className="due-total" style={{ fontSize: "1.15rem" }}>{l.name}</div>
+                        <p style={{ margin: "6px 0 10px", fontSize: ".85rem", color: "#a7c9bd" }}>Toplam iş {tl0(total)} · {l.collections.length} tahsilat · {l.expenses.length} harcama (Excel defterinden)</p>
+                        <AdminForm action={importLegacy} className="adm-form">
+                            <input type="hidden" name="key" value={l.key} />
+                            <SubmitButton confirm={`“${l.name}” teslim edilenlere eklensin mi?`} pendingText="Ekleniyor…">Teslim edilenlere aktar</SubmitButton>
+                        </AdminForm>
+                    </section>
+                );
+            })}
+
+            {list.length === 0 && !(showDelivered && pending.length) ? (
                 <p className="pl-empty">{showDelivered ? "Henüz teslim edilen proje yok." : "Aktif proje yok. Aşağıdan yeni proje ekleyin."}</p>
             ) : (
                 <ul className="pl-list">
