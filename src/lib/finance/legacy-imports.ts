@@ -66,4 +66,23 @@ export const LEGACY_IMPORTS: LegacyProject[] = [
             s(100000, "Hayrettin", U),
         ],
     },
+    {
+        key: "selvin-hanim",
+        name: "Selvin Hanım", client: "Selvin Hanım", status: "DONE",
+        contractAmount: 1_050_000, stage: "Teslim",
+        note: "Excel defterinden aktarıldı. Toplam teklif 1.230.600 ₺ (iş bedeli 1.050.000 + ilave işler 180.600; ilaveler tek kalem). Kalan alacak 122.600 ₺ (tahsil edilen 1.108.000 ₺). Defterde tarih yoktu: harcamalar ve tahsilat 30.09.2026 olarak girildi, iş başlangıç/bitiş tarihi boş. 1.300 ₺ boya iadesi boya harcamasından düşüldü. Defterdeki kâr: 34.930 ₺.",
+        extras: [{ title: "İlave işler (defterde ayrıntısız)", amount: 180_600 }],
+        collections: [{ date: "2026-09-30", amount: 1_108_000, title: "Tahsilat (toplam; tarihleri belli değil)" }],
+        defaultDate: "2026-09-30",
+        expenses: [
+            s(6000, "Hasan abi", U), s(12725, "Elektrik malzeme", E), s(150, "Anahtar", Y), f(770, "Karton", Y), s(1500, "Çuval", Y), s(10000, "Kartela", Y),
+            s(20000, "Hasan abi", U), s(1430, "Raşit abi", U), s(7125, "Elektrik malzeme", E), s(20000, "Kadir abi", U), s(15000, "Raşit abi", U), s(60000, "Erdem", U),
+            s(50000, "Hayrettin abi", U), s(25000, "Atilla abi", U), s(1900, "Harcama"), s(3250, "Harcama"), s(860, "Harcama"), s(35000, "Mahmut abi", U),
+            s(40000, "Raşit abi", U), s(100000, "Hayrettin abi", U), s(150000, "Ekol", M), s(4680, "Boya (1.300 ₺ iade düşüldü)", "Boya"), s(2390, "Harcama"),
+            s(90, "Harcama"), s(50, "Harcama"), s(550, "Harcama"), f(70000, "Emrah", U), s(10000, "Mahmut abi", U), s(650, "Harcama"), s(8400, "Elektrik malzeme", E),
+            s(80000, "Erdem", U), s(40000, "Tezgah", M), s(60000, "Hayrettin abi", U), s(40000, "Hasan abi", U), s(20000, "Deniz", U), s(200000, "Ekol", M),
+            s(325, "Harcama"), s(4400, "Harcama"), s(1300, "Harcama"), s(125, "Harcama"), s(10000, "Temizlik", "Temizlik ve bakım"), s(25000, "Tezgah", M),
+            s(33000, "Kadir abi", U), s(14000, "Deniz", U), s(10000, "Erdem", U),
+        ],
+    },
 ];
