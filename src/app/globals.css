@@ -395,3 +395,10 @@ pre.fin-probe { white-space: pre-wrap; word-break: break-all; font-size: 0.72rem
 .pk-list { list-style: none; margin: 10px 0 14px; padding: 0; display: grid; gap: 6px; }
 .pk-list li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--cream-dim); }
 .pk-sub { margin: 18px 0 0; font-size: .95rem; }
+
+/* Ana ekran: proje seçici */
+.sm-chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 10px; margin: 0 -2px; scrollbar-width: none; }
+.sm-chips::-webkit-scrollbar { display: none; }
+.sm-chip { flex: none; padding: 9px 14px; border-radius: 999px; background: var(--white); border: 1px solid var(--cream-dim); font-size: .88rem; font-weight: 600; white-space: nowrap; }
+.sm-chip.on { background: #14171c; border-color: #14171c; color: #f2b134; }
+.sm-sub { margin: 0 2px 10px; font-size: .85rem; color: var(--muted); }

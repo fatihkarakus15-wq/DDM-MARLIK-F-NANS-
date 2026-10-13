@@ -2,7 +2,10 @@ import Link from "next/link";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
 import { projectsOverview } from "@/lib/finance/reports";
-import { tl0 } from "@/lib/finance/money";
+import { money, tl0 } from "@/lib/finance/money";
+import { fmtDay, todayYmd } from "@/lib/finance/dates";
+import { loadQuick } from "@/lib/finance/quick";
+import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import InstallHint from "@/components/InstallHint";
 import { saveProject } from "./actions";
@@ -10,40 +13,38 @@ import { saveProject } from "./actions";
 export const dynamic = "force-dynamic";
 
 /** Ana ekran: projeler. Her projede tek dokunuşla harcama girişi ve o ana kadarki toplam. */
-export default async function Projelerim() {
+export default async function Projelerim({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
     await requireFinancePage();
+    const { p: pid } = await searchParams;
     const { ledger } = await activeLedger();
     const all = await projectsOverview(ledger.id);
     const live = all.filter(p => p.status === "ACTIVE" || p.status === "ON_HOLD" || p.status === "LEAD");
     const done = all.filter(p => p.status === "DONE");
+    const current = live.find(p => p.id === pid) ?? live[0];
+    const quick = current ? await loadQuick(ledger.id, current.id) : null;
 
     return (
         <div>
-            <div className="adm-head">
-                <div><h1 className="adm-title">Projeler</h1><p className="adm-sub">+ ile harcamayı hemen girin, projeye dokunarak ayrıntıya girin.</p></div>
-                <Link className="btn btn-sm adm-btn-outline" href="/ozet">Genel özet</Link>
-            </div>
             <InstallHint />
-
-            {live.length === 0 ? (
-                <section className="adm-card"><p className="adm-empty">Henüz proje yok. Aşağıdan ilk projeyi ekleyin (ör. “Yıldız Apt. tadilat”).</p></section>
+            {current && quick ? (
+                <>
+                    <nav className="sm-chips" aria-label="Proje seç">
+                        {live.map(p => <Link key={p.id} href={`/?p=${p.id}`} replace className={`sm-chip${p.id === current.id ? " on" : ""}`}>{p.code ? `${p.code} · ` : ""}{p.name}</Link>)}
+                    </nav>
+                    <p className="sm-sub"><Link className="adm-link" href={`/projeler/${current.id}`}>{current.name} ayrıntısı</Link> · toplam harcanan <b>{tl0(quick.totalExpense)}</b>{current.budget > 0 ? ` / bütçe ${tl0(current.budget)}` : ""}</p>
+                    {quick.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
+                    <ProjectQuickAdd key={current.id} ledgerId={ledger.id} projectId={current.id} today={todayYmd()} accounts={quick.accounts} categories={quick.categories} favorites={quick.favorites} />
+                    <h2 className="sm-h">Son harcamalar</h2>
+                    {quick.recent.length === 0 ? <p className="muted" style={{ marginBottom: 18 }}>Bu projede henüz harcama yok.</p> : (
+                        <ul className="sm-recent">
+                            {quick.recent.map(t => (
+                                <li key={t.id}><Link href={`/hareketler/${t.id}`}><span>{t.title}</span><small>{fmtDay(t.date)} · {t.category?.name ?? "kalemsiz"}{t.status === "PLANNED" ? " · vadeli" : ""}</small></Link><b>{money(t.amount, t.currency)}</b></li>
+                            ))}
+                        </ul>
+                    )}
+                </>
             ) : (
-                <ul className="proj-list">
-                    {live.map(p => {
-                        const over = (p.budgetUsedPct ?? 0) > 100;
-                        return (
-                            <li key={p.id} className="proj-row">
-                                <Link href={`/projeler/${p.id}`} className="proj-row-main">
-                                    <strong className="proj-name">{p.code ? `${p.code} · ` : ""}{p.name}</strong>
-                                    <small>{p.client ?? "Müşteri belirtilmemiş"}</small>
-                                    <b>{tl0(p.expense)} <small>harcandı</small></b>
-                                    {p.budget > 0 && <div className={`fin-meter${over ? " over" : ""}`}><span style={{ width: `${Math.min(100, p.budgetUsedPct ?? 0)}%` }} /></div>}
-                                </Link>
-                                <Link href={`/projeler/${p.id}#ekle`} className="proj-plus" aria-label={`${p.name} projesine harcama ekle`}>+</Link>
-                            </li>
-                        );
-                    })}
-                </ul>
+                <section className="adm-card"><div className="adm-card-body"><p className="adm-empty">Henüz proje yok. Aşağıdan ilk projeyi ekleyin (ör. “Yıldız Apt. tadilat”).</p></div></section>
             )}
 
             <details className="adm-fold" open={live.length === 0}>
@@ -58,7 +59,7 @@ export default async function Projelerim() {
                 </div>
             </details>
 
-            {done.length > 0 && <p className="muted"><Link className="adm-link" href="/projeler?durum=DONE">{done.length} tamamlanan proje</Link> · <Link className="adm-link" href="/projeler">Tüm projeler ve düzenleme</Link></p>}
+            <p className="muted"><Link className="adm-link" href="/projeler">Tüm projeler ve düzenleme</Link>{done.length > 0 ? <> · <Link className="adm-link" href="/projeler?durum=DONE">{done.length} tamamlanan proje</Link></> : null} · <Link className="adm-link" href="/ozet">Genel özet</Link></p>
         </div>
     );
 }
