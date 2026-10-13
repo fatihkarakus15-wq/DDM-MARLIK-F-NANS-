@@ -50,7 +50,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         const c = expenseOpts.find(o => leafLabel(o.label) === name);
         if (c && !picked.some(x => x.id === c.id)) picked.push(c);
     }
-    const favorites = picked.map(c => ({ id: c.id, label: leafLabel(c.label) }));
+    const spentBy = new Map(costs.compare.map(c => [c.categoryId, c.actual]));
+    const favorites = picked.slice(0, 8).map(c => ({ id: c.id, label: leafLabel(c.label), spent: spentBy.get(c.id) }));
     const status = PROJECT_STATUS[project.status];
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
     const budgeted = new Set(costs.compare.filter(c => c.budget > 0).map(c => c.categoryId));
@@ -67,14 +68,23 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                 <div className="adm-actions"><Link className="btn btn-sm adm-btn-outline" href={`/projeler?duzenle=${id}#form`}>Projeyi düzenle</Link><Link className="btn btn-sm adm-btn-outline" href={`/hareketler?proje=${id}&donem=tumu`}>Tüm hareketler</Link></div>
             </div>
 
-            <section className="adm-card quick-card" id="ekle">
-                <div className="adm-card-head"><h2 className="adm-card-title">Harcama ekle</h2><span className="adm-card-note">{tl0(p.expense)} harcandı</span></div>
-                <div className="adm-card-body">
-                    {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                    <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
-                </div>
-            </section>
+            <div id="ekle">
+                {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
+                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
+            </div>
 
+            <h2 className="sm-h">Son harcamalar <span>· toplam {tl0(p.expense)}</span></h2>
+            {txs.filter(t => t.type === "EXPENSE").length === 0 ? <p className="muted" style={{ marginBottom: 18 }}>Henüz harcama girilmemiş.</p> : (
+                <ul className="sm-recent">
+                    {txs.filter(t => t.type === "EXPENSE").slice(0, 6).map(t => (
+                        <li key={t.id}><Link href={`/hareketler/${t.id}`}><span>{t.title}</span><small>{fmtDay(t.date)} · {t.category?.name ?? "kalemsiz"}{t.status === "PLANNED" ? " · vadeli" : ""}</small></Link><b>{money(t.amount, t.currency)}</b></li>
+                    ))}
+                </ul>
+            )}
+
+            <details className="adm-fold">
+                <summary>Özet, bütçeler ve grafikler</summary>
+                <div className="adm-card-body">
             <div className="adm-kpis">
                 <Kpi accent label="Sözleşme bedeli" value={p.contract != null ? tl0(p.contract) : "—"} note={p.contractLeft != null ? `faturalanmamış ${tl0(Math.max(0, p.contractLeft))}` : "bedel girilmemiş"} />
                 <Kpi label="Gelir (KDV hariç)" value={tl0(p.income)} note={`tahsil edilen ${tl0(p.collected)} · alacak ${tl0(p.receivable)}`} />
@@ -158,6 +168,9 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                     </div>
                 )}
             </section>
+
+                </div>
+            </details>
 
             <details className="adm-fold">
                 <summary>Gelir (tahsilat) ya da ayrıntılı hareket ekle</summary>

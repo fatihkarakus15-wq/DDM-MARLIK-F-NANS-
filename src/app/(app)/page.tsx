@@ -2,8 +2,7 @@ import Link from "next/link";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
 import { projectsOverview } from "@/lib/finance/reports";
-import { PROJECT_STATUS } from "@/lib/finance/labels";
-import { pct, tl0 } from "@/lib/finance/money";
+import { tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import InstallHint from "@/components/InstallHint";
 import { saveProject } from "./actions";
@@ -21,7 +20,7 @@ export default async function Projelerim() {
     return (
         <div>
             <div className="adm-head">
-                <div><h1 className="adm-title">Projeler</h1><p className="adm-sub">Bir projeye dokunun, harcamayı hemen girin.</p></div>
+                <div><h1 className="adm-title">Projeler</h1><p className="adm-sub">+ ile harcamayı hemen girin, projeye dokunarak ayrıntıya girin.</p></div>
                 <Link className="btn btn-sm adm-btn-outline" href="/ozet">Genel özet</Link>
             </div>
             <InstallHint />
@@ -31,28 +30,16 @@ export default async function Projelerim() {
             ) : (
                 <ul className="proj-list">
                     {live.map(p => {
-                        const st = PROJECT_STATUS[p.status as keyof typeof PROJECT_STATUS];
                         const over = (p.budgetUsedPct ?? 0) > 100;
                         return (
-                            <li key={p.id}>
-                                <Link href={`/projeler/${p.id}`} className="proj-card">
-                                    <div className="proj-top">
-                                        <div><strong className="proj-name">{p.code ? `${p.code} · ` : ""}{p.name}</strong><span className="proj-client">{p.client ?? "Müşteri belirtilmemiş"}</span></div>
-                                        <span className={`adm-badge ${st.tone}`}>{st.label}</span>
-                                    </div>
-                                    <div className="proj-nums">
-                                        <div><small>Harcanan</small><b>{tl0(p.expense)}</b></div>
-                                        <div><small>Gelen</small><b>{tl0(p.income)}</b></div>
-                                        <div><small>Kâr</small><b className={p.margin < 0 ? "fin-neg" : "fin-pos"}>{p.margin < 0 ? "−" : ""}{tl0(Math.abs(p.margin))}</b></div>
-                                    </div>
-                                    {p.budget > 0 && (
-                                        <div>
-                                            <div className={`fin-meter${over ? " over" : ""}`}><span style={{ width: `${Math.min(100, p.budgetUsedPct ?? 0)}%` }} /></div>
-                                            <small className={over ? "fin-neg" : "muted"}>{over ? "▲ bütçe aşıldı · " : "bütçe kullanımı "}{pct(p.budgetUsedPct)} ({tl0(p.expense)} / {tl0(p.budget)})</small>
-                                        </div>
-                                    )}
-                                    <span className="proj-add">+ Harcama ekle</span>
+                            <li key={p.id} className="proj-row">
+                                <Link href={`/projeler/${p.id}`} className="proj-row-main">
+                                    <strong className="proj-name">{p.code ? `${p.code} · ` : ""}{p.name}</strong>
+                                    <small>{p.client ?? "Müşteri belirtilmemiş"}</small>
+                                    <b>{tl0(p.expense)} <small>harcandı</small></b>
+                                    {p.budget > 0 && <div className={`fin-meter${over ? " over" : ""}`}><span style={{ width: `${Math.min(100, p.budgetUsedPct ?? 0)}%` }} /></div>}
                                 </Link>
+                                <Link href={`/projeler/${p.id}#ekle`} className="proj-plus" aria-label={`${p.name} projesine harcama ekle`}>+</Link>
                             </li>
                         );
                     })}

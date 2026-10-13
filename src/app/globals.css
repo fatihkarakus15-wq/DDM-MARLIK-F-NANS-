@@ -336,3 +336,48 @@ pre.fin-probe { white-space: pre-wrap; word-break: break-all; font-size: 0.72rem
 .quick-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
 .quick-save { flex: 1 1 160px; height: 52px; font-size: 1.02rem; }
 .quick-card { border-color: var(--gold); }
+
+/* ---- Şantiye modu (proje harcama girişi) ---- */
+.sm { --sm-bg: #14171c; --sm-card: #232830; --sm-line: #2d333d; --sm-t: #f1efe9; --sm-m: #9a9fa9; --sm-a: #f2b134; background: var(--sm-bg); color: var(--sm-t); border-radius: 18px; padding: 14px 12px 16px; margin-bottom: 18px; display: grid; gap: 10px; }
+.sm-disp { padding: 4px 8px 0; }
+.sm-disp small { display: block; color: var(--sm-m); font-size: .85rem; min-height: 1.3em; }
+.sm-disp b { display: block; font: 800 3rem/1.1 var(--font-display, inherit); letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.sm-disp b.empty { color: #4b525e; }
+.sm-disp b i { font-style: normal; font-size: 1.5rem; color: var(--sm-m); }
+.sm-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sm-tile { position: relative; display: grid; align-content: center; justify-items: center; gap: 2px; min-height: 58px; padding: 6px 4px; border: 0; border-radius: 14px; background: var(--sm-card); color: var(--sm-m); font: inherit; text-align: center; cursor: pointer; }
+.sm-tile b { font-size: .8rem; line-height: 1.15; color: var(--sm-t); font-weight: 650; }
+.sm-tile span { font-size: .68rem; font-variant-numeric: tabular-nums; }
+.sm-tile.on { background: var(--sm-a); color: #14171c; }
+.sm-tile.on b { color: #14171c; }
+.sm-other select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; font-size: 16px; }
+.sm-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sm-keys button { height: 56px; border: 0; border-radius: 14px; background: var(--sm-card); color: var(--sm-t); font-family: inherit; font-weight: 700; font-size: 1.5rem; cursor: pointer; }
+.sm-keys button:active { background: #343b46; }
+.sm-more { border-top: 1px solid var(--sm-line); padding-top: 8px; }
+.sm-more summary { color: var(--sm-m); font-size: .88rem; cursor: pointer; padding: 6px 4px; }
+.sm-more-body { display: grid; gap: 10px; padding: 6px 2px 2px; }
+.sm-more-body label { display: grid; gap: 4px; font-size: .78rem; color: var(--sm-m); }
+.sm-more-body input, .sm-more-body select { width: 100%; height: 44px; padding: 0 10px; border: 1px solid var(--sm-line); border-radius: 10px; background: var(--sm-card); color: var(--sm-t); font-size: 16px; font-family: inherit; }
+.sm-more-body input[type="file"] { padding-top: 10px; height: auto; min-height: 44px; }
+.sm-go { height: 58px; border: 0; border-radius: 16px; background: var(--sm-a); color: #14171c; font-family: inherit; font-weight: 800; font-size: 1.15rem; cursor: pointer; }
+.sm-go:disabled { opacity: .6; }
+.sm-msg { margin: 0; padding: 0 6px; font-size: .9rem; }
+.sm-msg.ok { color: #7fd99a; }
+.sm-msg.err { color: #ff8f8f; }
+@media (min-width: 900px) { .sm { max-width: 420px; } }
+
+/* Son harcamalar ve sade proje listesi */
+.sm-recent { list-style: none; margin: 0 0 18px; padding: 0; background: var(--white); border: 1px solid var(--cream-dim); border-radius: 14px; }
+.sm-recent li { display: flex; justify-content: space-between; gap: 10px; padding: 12px 14px; border-top: 1px solid var(--cream-dim); }
+.sm-recent li:first-child { border-top: 0; }
+.sm-recent small { display: block; color: var(--muted); font-size: .75rem; }
+.sm-recent b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.proj-row { display: flex; align-items: center; gap: 12px; padding: 14px 16px; background: var(--white); border: 1px solid var(--cream-dim); border-radius: 14px; }
+.proj-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.proj-row-main small { color: var(--muted); font-size: .78rem; }
+.proj-row-main b { font: 700 1.15rem var(--font-display, inherit); font-variant-numeric: tabular-nums; }
+.proj-plus { flex: none; width: 52px; height: 52px; border-radius: 16px; background: #14171c; color: #f2b134; display: grid; place-items: center; font-size: 1.8rem; font-weight: 600; }
+.sm-h { font: 700 1rem var(--font-display, inherit); margin: 4px 2px 8px; }
+.sm-h span { color: var(--muted); font-weight: 500; font-size: .85rem; }
+.sm-recent a { display: grid; min-width: 0; }
