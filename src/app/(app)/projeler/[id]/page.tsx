@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addProjectItem, deleteProject, saveBudgetLine } from "../../actions";
+import { addProjectItem, deleteProject, saveBudgetLine, setProjectDelivered } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +61,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
 
     return (
         <div>
-            <Link href="/projeler" className="adm-back">← Projeler</Link>
+            <Link href="/" className="adm-back">← Projeler</Link>
             <div className="adm-head">
                 <div>
                     <h1 className="adm-title">{project.code ? `${project.code} · ` : ""}{project.name}</h1>
@@ -181,6 +181,15 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                     <TxForm ledgerId={ledger.id} today={todayYmd()} accounts={opts.accounts} categories={opts.categories} projects={opts.projects} contacts={opts.contacts} rates={opts.rates} initial={{ type: "EXPENSE", projectId: id, contactId: undefined }} />
                 </div>
             </details>
+
+            <section className="adm-card">
+                <div className="adm-card-body">
+                    <AdminForm action={setProjectDelivered} className="adm-inline">
+                        <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={id} /><input type="hidden" name="delivered" value={project.status === "DONE" ? "0" : "1"} />
+                        <SubmitButton className="btn btn-dark" confirm={project.status === "DONE" ? undefined : "Proje teslim edildi olarak işaretlensin mi? Ana ekranda “Teslim edilenler” altına geçer."}>{project.status === "DONE" ? "Yeniden aktif yap" : "Teslim edildi olarak işaretle"}</SubmitButton>
+                    </AdminForm>
+                </div>
+            </section>
 
             <section className="adm-card">
                 <div className="adm-card-body">

@@ -176,6 +176,18 @@ export async function saveProject(_: ActionState, fd: FormData): Promise<ActionS
     });
 }
 
+/** Projeyi "Teslim edildi" (DONE) ya da yeniden "Aktif" yapar (ana ekrandaki iki başlık) */
+export async function setProjectDelivered(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const delivered = fd.get("delivered") === "1";
+        const upd = await prisma.finProject.updateMany({ where: { id: str(fd, "id"), ledgerId: ledger.id }, data: { status: delivered ? "DONE" : "ACTIVE", ...(delivered && { endDate: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), 12)) }) } });
+        must(upd.count, "Proje");
+        refresh();
+        return delivered ? "Proje teslim edildi olarak işaretlendi." : "Proje yeniden aktif.";
+    });
+}
+
 export async function deleteProject(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
         const ledger = await ledgerOf(fd);
