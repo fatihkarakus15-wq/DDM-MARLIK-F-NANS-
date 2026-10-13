@@ -14,9 +14,26 @@ import { LEGACY_IMPORTS } from "@/lib/finance/legacy-imports";
 export const dynamic = "force-dynamic";
 
 /** Ana ekran: projelerin adları. Üstte "Aktif" ve "Teslim edilenler"; bir projeye dokununca harcama girişi açılır. */
-export default async function Projelerim({ searchParams }: { searchParams: Promise<{ durum?: string }> }) {
+function ProjectList({ items }: { items: { id: string; code: string | null; name: string; client: string | null; expense: number }[] }) {
+    return (
+        <ul className="pl-list">
+            {items.map(p => (
+                <li key={p.id}>
+                    <Link href={`/projeler/${p.id}`} className="pl-item">
+                        <span className="pl-main">
+                            <strong>{p.code ? `${p.code} · ` : ""}{p.name}</strong>
+                            <small>{p.client ?? "Müşteri belirtilmemiş"} · harcanan {tl0(p.expense)}</small>
+                        </span>
+                        <span className="pl-go" aria-hidden="true">›</span>
+                    </Link>
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+export default async function Projelerim() {
     await requireFinancePage();
-    const { durum } = await searchParams;
     const { ledger } = await activeLedger();
     const now = today();
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 12));
@@ -31,20 +48,13 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
     const dueTotal = due.reduce((a, t) => a + t.amountTRY, 0);
     const active = all.filter(p => p.status === "ACTIVE" || p.status === "ON_HOLD" || p.status === "LEAD");
     const delivered = all.filter(p => p.status === "DONE");
-    const showDelivered = durum === "teslim";
-    const list = showDelivered ? delivered : active;
     // Excel defterinden hazırlanmış, henüz eklenmemiş geçmiş işler (Teslim edilenler sekmesinde tek dokunuşla eklenir)
     const pending = LEGACY_IMPORTS.filter(l => !all.some(p => p.name.toLocaleLowerCase("tr") === l.name.toLocaleLowerCase("tr")));
 
     return (
         <div>
             <InstallHint />
-            <nav className="pl-tabs" aria-label="Proje durumu">
-                <Link href="/" replace className={`pl-tab${!showDelivered ? " on" : ""}`} aria-current={!showDelivered ? "page" : undefined}>Aktif <span>{active.length}</span></Link>
-                <Link href="/?durum=teslim" replace className={`pl-tab${showDelivered ? " on" : ""}`} aria-current={showDelivered ? "page" : undefined}>Teslim edilenler <span>{delivered.length}</span></Link>
-            </nav>
-
-            {!showDelivered && due.length > 0 && (
+            {due.length > 0 && (
                 <section className="due-card" aria-label="Bu ay alınacaklar">
                     <h2>Bu ay alınacaklar</h2>
                     <div className="due-total">{tl0(dueTotal)}</div>
@@ -61,7 +71,11 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                 </section>
             )}
 
-            {showDelivered && pending.map(l => {
+            <h2 className="pl-head">Aktif <span>{active.length}</span></h2>
+            {active.length === 0 ? <p className="pl-empty">Aktif proje yok. Aşağıdan yeni proje ekleyin.</p> : <ProjectList items={active} />}
+
+            <h2 className="pl-head">Teslim edilenler <span>{delivered.length}</span></h2>
+            {pending.map(l => {
                 const total = l.contractAmount + l.extras.reduce((a, e) => a + e.amount, 0);
                 return (
                     <section className="due-card" key={l.key} aria-label="Aktarılmaya hazır geçmiş iş">
@@ -76,23 +90,7 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
                 );
             })}
 
-            {list.length === 0 && !(showDelivered && pending.length) ? (
-                <p className="pl-empty">{showDelivered ? "Henüz teslim edilen proje yok." : "Aktif proje yok. Aşağıdan yeni proje ekleyin."}</p>
-            ) : (
-                <ul className="pl-list">
-                    {list.map(p => (
-                        <li key={p.id}>
-                            <Link href={`/projeler/${p.id}`} className="pl-item">
-                                <span className="pl-main">
-                                    <strong>{p.code ? `${p.code} · ` : ""}{p.name}</strong>
-                                    <small>{p.client ?? "Müşteri belirtilmemiş"} · harcanan {tl0(p.expense)}</small>
-                                </span>
-                                <span className="pl-go" aria-hidden="true">›</span>
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {delivered.length === 0 && pending.length === 0 ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
 
             <details className="adm-fold" open={all.length === 0}>
                 <summary>Yeni proje ekle</summary>
