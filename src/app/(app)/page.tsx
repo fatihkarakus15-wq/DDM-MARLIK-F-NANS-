@@ -32,8 +32,10 @@ function ProjectList({ items }: { items: { id: string; code: string | null; name
     );
 }
 
-export default async function Projelerim() {
+export default async function Projelerim({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
     await requireFinancePage();
+    const sp = await searchParams;
+    const tab = sp.sekme === "teslim" || sp.durum === "teslim" ? "teslim" : sp.sekme === "alinacak" ? "alinacak" : "aktif";
     const { ledger } = await activeLedger();
     const now = today();
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 12));
@@ -54,7 +56,13 @@ export default async function Projelerim() {
     return (
         <div>
             <InstallHint />
-            {due.length > 0 && (
+            <nav className="pl-tabs three" aria-label="Projeler">
+                <Link href="/" replace className={`pl-tab${tab === "aktif" ? " on" : ""}`} aria-current={tab === "aktif" ? "page" : undefined}>Aktif <span>{active.length}</span></Link>
+                <Link href="/?sekme=teslim" replace className={`pl-tab${tab === "teslim" ? " on" : ""}`} aria-current={tab === "teslim" ? "page" : undefined}>Teslim edilenler <span>{delivered.length}</span></Link>
+                <Link href="/?sekme=alinacak" replace className={`pl-tab${tab === "alinacak" ? " on" : ""}`} aria-current={tab === "alinacak" ? "page" : undefined}>Alınacaklar <span>{due.length}</span></Link>
+            </nav>
+
+            {tab === "alinacak" && (due.length > 0 ? (
                 <section className="due-card" aria-label="Bu ay alınacaklar">
                     <h2>Bu ay alınacaklar</h2>
                     <div className="due-total">{tl0(dueTotal)}</div>
@@ -69,12 +77,12 @@ export default async function Projelerim() {
                         ))}
                     </ul>
                 </section>
-            )}
+            ) : <p className="pl-empty">Bu ay (ve gecikmiş) alınacak tahsilat yok. Projelerin Tahsilat planına tarih ve tutar ekleyebilirsiniz.</p>)}
 
-            <h2 className="pl-head">Aktif <span>{active.length}</span></h2>
-            {active.length === 0 ? <p className="pl-empty">Aktif proje yok. Aşağıdan yeni proje ekleyin.</p> : <ProjectList items={active} />}
+            {tab === "aktif" && (active.length === 0 ? <p className="pl-empty">Aktif proje yok. Aşağıdan yeni proje ekleyin.</p> : <ProjectList items={active} />)}
 
-            <h2 className="pl-head">Teslim edilenler <span>{delivered.length}</span></h2>
+            {tab === "teslim" && (
+                <>
             {pending.map(l => {
                 const total = l.contractAmount + l.extras.reduce((a, e) => a + e.amount, 0);
                 return (
@@ -90,8 +98,11 @@ export default async function Projelerim() {
                 );
             })}
 
-            {delivered.length === 0 && pending.length === 0 ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
+                    {delivered.length === 0 && pending.length === 0 ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
+                </>
+            )}
 
+            {tab === "aktif" && (
             <details className="adm-fold" open={all.length === 0}>
                 <summary>Yeni proje ekle</summary>
                 <div className="adm-card-body">
@@ -103,6 +114,7 @@ export default async function Projelerim() {
                     </AdminForm>
                 </div>
             </details>
+            )}
         </div>
     );
 }

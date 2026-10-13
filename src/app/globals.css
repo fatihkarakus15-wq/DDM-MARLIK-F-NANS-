@@ -546,3 +546,6 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 
 .pl-head { display: flex; align-items: center; gap: 8px; margin: 18px 2px 10px; font: 700 1.05rem var(--font-display); }
 .pl-head span { min-width: 24px; padding: 1px 8px; border-radius: 999px; background: var(--surface2); color: var(--muted); font-size: .78rem; text-align: center; }
+.pl-tabs.three { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.pl-tabs.three .pl-tab { flex-direction: column; gap: 2px; min-height: 54px; font-size: .8rem; text-align: center; line-height: 1.15; }
+.pl-tabs.three .pl-tab span { font-size: .72rem; padding: 0 8px; }
