@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 interface Opt { id: string; label: string }
 interface Fav extends Opt { spent?: number }
-interface Props { ledgerId: string; projectId: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string }
+interface Props { ledgerId: string; projectId?: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string }
 
 const KEY = "ofis-finans:son-hesap";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "⌫"];
@@ -55,11 +55,11 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
         const amount = Number(raw.replace(",", "."));
         if (!amount || amount <= 0) { setMsg({ ok: false, text: "Önce tutarı girin." }); return; }
         const fd = new FormData();
-        fd.set("ledgerId", ledgerId); fd.set("projectId", projectId); fd.set("type", "EXPENSE"); fd.set("status", accountId ? "DONE" : "PLANNED");
+        fd.set("ledgerId", ledgerId); if (projectId) fd.set("projectId", projectId); fd.set("type", "EXPENSE"); fd.set("status", accountId ? "DONE" : "PLANNED");
         fd.set("accountId", accountId); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
-        fd.set("title", note.trim() || label(categoryId) || "Harcama");
+        fd.set("title", note.trim() || label(categoryId) || (projectId ? "Harcama" : "Ofis harcaması"));
         if (file) fd.set("files", file);
-        if (rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
+        if (projectId && rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
         setBusy(true); setMsg(null);
         try {
             const res = await fetch("/api/hareket", { method: "POST", body: fd });
@@ -104,11 +104,16 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
                 {KEYS.map(k => <button key={k} type="button" onClick={() => press(k)} aria-label={k === "⌫" ? "Sil" : k}>{k}</button>)}
             </div>
 
+            {projectId && (
+                <>
             <label className="sm-rebill"><input type="checkbox" checked={rebill} onChange={e => setRebill(e.target.checked)} /> Müşteriden ekstra alınacak</label>
             {rebill && (
                 <label className="sm-rebill-amt">Müşteriden alınacak (₺)
                     <input name="rebillAmount" inputMode="decimal" value={rebillAmt} onChange={e => setRebillAmt(e.target.value)} placeholder={show(raw) === "0" ? "0" : `${show(raw)} (harcamayla aynı)`} autoComplete="off" />
                 </label>
+            )}
+
+                </>
             )}
 
             <details className="sm-more">

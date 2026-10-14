@@ -555,3 +555,11 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 .pl-year { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: var(--surface2); font-weight: 650; font-size: .92rem; color: var(--muted); }
 .pl-year span { font-size: .74rem; opacity: .8; }
 .pl-year.on { background: var(--gold); color: var(--ink-on-gold); }
+
+/* Ofis: satıra dokununca açılan ayrıntı */
+.pay-item { display: block; }
+.pay-item > summary { list-style: none; cursor: pointer; }
+.pay-item > summary::-webkit-details-marker { display: none; }
+.pay-item > summary::after { content: "▾"; color: var(--muted); margin-left: 8px; font-size: .8rem; }
+.pay-item[open] > summary::after { content: "▴"; }
+.pay-body { padding: 10px 0 2px; display: grid; gap: 10px; }

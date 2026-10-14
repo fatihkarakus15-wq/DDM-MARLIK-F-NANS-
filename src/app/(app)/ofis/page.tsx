@@ -9,6 +9,7 @@ import { FREQUENCY } from "@/lib/finance/labels";
 import { fmtDay, today, todayYmd, ymd } from "@/lib/finance/dates";
 import { money, tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
+import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
 import { addSalary, deleteRecurring, saveRecurring, settleAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -18,15 +19,21 @@ export const metadata = { title: "Ofis giderleri" };
 const perMonth = (amount: number, f: string) => (f === "YEARLY" ? amount / 12 : f === "QUARTERLY" ? amount / 3 : f === "WEEKLY" ? (amount * 52) / 12 : amount);
 
 /** Sabit ofis giderleri: kira, maaş, fatura, abonelik… Tekrarlayan giderler her dönem otomatik vadeli kayıt üretir. */
-export default async function OfisGiderleri() {
+export default async function OfisGiderleri({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
     await requireFinancePage();
+    const { sekme } = await searchParams;
+    const tab = sekme === "sabit" ? "sabit" : sekme === "ekstra" ? "ekstra" : "maas";
     const { ledger } = await activeLedger();
     await generateRecurring(ledger.id);
     const now = today();
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 12));
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 12));
     const rates = await ensureFreshRates(600);
-    const [recs, opts] = await Promise.all([
+    const [extraTxs, recs, opts] = await Promise.all([
+        prisma.finTransaction.findMany({
+            where: { ledgerId: ledger.id, type: "EXPENSE", projectId: null, recurringId: null, date: { gte: monthStart, lte: monthEnd } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 100,
+            select: { id: true, title: true, amount: true, currency: true, amountTRY: true, date: true, status: true, category: { select: { id: true, name: true } } },
+        }),
         prisma.finRecurring.findMany({ where: { ledgerId: ledger.id, type: "EXPENSE", projectId: null }, orderBy: [{ isActive: "desc" }, { title: "asc" }], include: { category: { select: { name: true } } } }),
         formOptions(ledger.id, rates),
     ]);
@@ -48,6 +55,12 @@ export default async function OfisGiderleri() {
     const left = thisMonth.filter(t => t.status === "PLANNED").reduce((a, t) => a + t.amount, 0);
     const todayDay = todayYmd();
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
+    const extraTotal = extraTxs.reduce((a, t) => a + t.amountTRY, 0);
+    const OFFICE_FAV = ["Kırtasiye", "Baskı ve plot", "Yemek", "Kahve / ikram", "Temizlik ve bakım", "Yakıt", "Aidat ve faturalar", "Ekipman", "Otopark / geçiş"];
+    const spentBy = new Map<string, number>();
+    for (const t of extraTxs) if (t.category) spentBy.set(t.category.id, (spentBy.get(t.category.id) ?? 0) + t.amountTRY);
+    const leaf = (l: string) => l.split(" › ").pop()!;
+    const extraFavs = OFFICE_FAV.map(n => expenseCats.find(c => leaf(c.label) === n)).filter((c): c is NonNullable<typeof c> => !!c).slice(0, 8).map(c => ({ id: c.id, label: leaf(c.label), spent: spentBy.get(c.id) }));
 
     const renderItem = (r: (typeof recs)[number]) => {
                             const mine = byRec.get(r.id) ?? [];
@@ -56,16 +69,15 @@ export default async function OfisGiderleri() {
                             const late = !!cur && cur.status === "PLANNED" && ymd(cur.date) < todayDay;
                             return (
                                 <li key={r.id} className={!r.isActive ? "done" : cur?.status === "DONE" ? "done" : late ? "late" : ""}>
-                                    <div className="pay-row">
+                                    <details className="pay-item"><summary className="pay-row">
                                         <span><b>{r.title}</b><small>{FREQUENCY[r.frequency]}{r.category ? ` · ${r.category.name}` : ""}{!r.isActive ? " · durduruldu" : ""}</small></span>
                                         <span className="pay-amt"><b>{money(r.amount, r.currency)}</b>
                                             {r.isActive && (cur
                                                 ? <em className={`adm-badge ${cur.status === "DONE" ? "ok" : late ? "bad" : "warn"}`}>{cur.status === "DONE" ? "Bu ay ödendi" : `${late ? "Gecikmiş" : "Bekliyor"} · ${fmtDay(cur.date)}`}</em>
                                                 : next ? <em className="adm-badge muted">Sonraki {fmtDay(next.date)}</em> : null)}
                                         </span>
-                                    </div>
-                                    <details className="pay-act">
-                                        <summary>{cur?.status === "PLANNED" ? "Ödendi işle / düzenle" : "Düzenle"}</summary>
+                                    </summary>
+                                    <div className="pay-body">
                                         {cur?.status === "PLANNED" && (
                                             <AdminForm action={settleAction} className="adm-inline">
                                                 <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={cur.id} />
@@ -80,6 +92,7 @@ export default async function OfisGiderleri() {
                                             <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={r.id} />
                                             <SubmitButton className="btn btn-sm adm-btn-danger" pendingText="…" confirm="Sabit gider ve gelecek vadeleri silinsin mi? Ödenmiş kayıtlar korunur.">Sil</SubmitButton>
                                         </AdminForm>
+                                    </div>
                                     </details>
                                 </li>
                             );
@@ -98,6 +111,13 @@ export default async function OfisGiderleri() {
                 <div><small>Bu ay ödenecek</small><b>{tl0(left)}</b></div>
             </div>
 
+            <nav className="pl-tabs three" aria-label="Ofis giderleri">
+                <Link href="/ofis" replace className={`pl-tab${tab === "maas" ? " on" : ""}`}>Maaşlar <span>{salaries.length}</span></Link>
+                <Link href="/ofis?sekme=sabit" replace className={`pl-tab${tab === "sabit" ? " on" : ""}`}>Sabit giderler <span>{fixed.length}</span></Link>
+                <Link href="/ofis?sekme=ekstra" replace className={`pl-tab${tab === "ekstra" ? " on" : ""}`}>Ekstra <span>{extraTxs.length}</span></Link>
+            </nav>
+
+            {tab === "maas" && (
             <section className="adm-card" id="maaslar">
                 <div className="adm-card-head"><h2 className="adm-card-title">Maaşlar</h2><span className="adm-card-note">Aylık {tl0(salaryMonthly)}</span></div>
                 {salaries.length === 0 ? <p className="adm-empty">Henüz maaş yok. Aşağıdan kişi adı ve tutarla ekleyin.</p> : <ul className="pay-list">{salaries.map(renderItem)}</ul>}
@@ -114,6 +134,9 @@ export default async function OfisGiderleri() {
                     </AdminForm>
                 </div>
             </section>
+            )}
+
+            {tab === "sabit" && (<>
 
             <section className="adm-card">
                 <div className="adm-card-head"><h2 className="adm-card-title">Sabit giderler</h2><span className="adm-card-note">{fixed.filter(r => r.isActive).length} aktif</span></div>
@@ -138,6 +161,23 @@ export default async function OfisGiderleri() {
                     </AdminForm>
                 </div>
             </section>
+            </>)}
+
+            {tab === "ekstra" && (
+                <>
+                    <ProjectQuickAdd ledgerId={ledger.id} today={todayDay} accounts={opts.accounts} categories={expenseCats.map(c => ({ id: c.id, label: c.label }))} favorites={extraFavs} />
+                    <section className="adm-card">
+                        <div className="adm-card-head"><h2 className="adm-card-title">Bu ayki ekstra harcamalar</h2><span className="adm-card-note">Toplam {tl0(extraTotal)}</span></div>
+                        {extraTxs.length === 0 ? <p className="adm-empty">Bu ay ekstra harcama girilmemiş. Yukarıdaki tuşlarla ekleyin.</p> : (
+                            <ul className="pay-list">
+                                {extraTxs.map(t => (
+                                    <li key={t.id}><Link href={`/hareketler/${t.id}`} className="pay-row"><span><b>{t.title}</b><small>{fmtDay(t.date)} · {t.category?.name ?? "kalemsiz"}{t.status === "PLANNED" ? " · vadeli" : ""}</small></span><span className="pay-amt"><b>{money(t.amount, t.currency)}</b></span></Link></li>
+                                ))}
+                            </ul>
+                        )}
+                    </section>
+                </>
+            )}
         </div>
     );
 }
