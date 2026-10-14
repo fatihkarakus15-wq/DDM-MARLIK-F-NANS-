@@ -21,7 +21,6 @@ export interface Item { href: string; label: string; icon: keyof typeof ICONS; s
 export const ITEMS: Item[] = [
     { href: "/", label: "Projeler", icon: "projeler", slot: "tab", match: ["/projeler"] },
     { href: "/ofis", label: "Ofis", icon: "ofis", slot: "tab" },
-    { href: "/yeni", label: "Ekle", icon: "ekle", slot: "tab" },
     { href: "/vadeler", label: "Vadeler", icon: "vadeler", slot: "tab" },
     { href: "/daha-fazla", label: "Daha fazla", icon: "daha", slot: "more", match: ["/ozet", "/hareketler", "/hesaplar", "/cariler", "/cek-senet", "/nakit-akisi", "/yatirimlar", "/raporlar", "/ice-aktar", "/ayarlar"] },
     { href: "/ozet", label: "Genel özet", icon: "ozet", slot: "desk" },
