@@ -80,6 +80,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
     const hasTotal = project.contractAmount != null || extrasTotal > 0 || rebillTotal > 0;
     const grandTotal = (project.contractAmount ?? 0) + extrasTotal + rebillTotal;
     const unplanned = hasTotal ? Math.max(0, grandTotal - received - pending) : null;
+    const spentTotal = spent.reduce((a, x) => a + (x._sum.amountTRY ?? 0), 0);
+    const current = (project.contractAmount ?? 0) + extrasTotal + rebillTotal;
     const STAGES = ["Teklif", "Keşif / ölçü", "Proje çizimi", "Ruhsat / onay", "İmalat / uygulama", "Montaj", "Teslim"];
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
     const budgeted = new Set(costs.compare.filter(c => c.budget > 0).map(c => c.categoryId));
@@ -95,6 +97,20 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                 </div>
                 <div className="adm-actions"><Link className="btn btn-sm adm-btn-outline" href={`/projeler?duzenle=${id}#form`}>Projeyi düzenle</Link><Link className="btn btn-sm adm-btn-outline" href={`/hareketler?proje=${id}&donem=tumu`}>Tüm hareketler</Link></div>
             </div>
+
+            <section className="adm-card" id="guncel">
+                <div className="adm-card-head"><h2 className="adm-card-title">Güncel rakamlar</h2><span className="adm-card-note">iş bedeli + ilaveler + ekstralar</span></div>
+                <div className="pay-sum">
+                    <div><small>Ana iş bedeli</small><b>{project.contractAmount != null ? tl0(project.contractAmount) : "—"}</b></div>
+                    <div><small>+ İlave işler</small><b>{tl0(extrasTotal)}</b></div>
+                    <div><small>+ Ekstralar</small><b>{tl0(rebillTotal)}</b></div>
+                    <div><small>Güncel toplam</small><b>{tl0(current)}</b></div>
+                    <div><small>Alınan</small><b className="fin-pos">{tl0(received)}</b></div>
+                    <div><small>Kalan alacak</small><b>{tl0(Math.max(0, current - received))}</b></div>
+                    <div><small>Harcama</small><b>{tl0(spentTotal)}</b></div>
+                    <div><small>Kâr (toplam − harcama)</small><b className={current - spentTotal >= 0 ? "fin-pos" : "fin-neg"}>{tl0(current - spentTotal)}</b></div>
+                </div>
+            </section>
 
             <div id="ekle">
                 {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
