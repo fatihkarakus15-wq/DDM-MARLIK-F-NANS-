@@ -549,3 +549,9 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 .pl-tabs.three { grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .pl-tabs.three .pl-tab { flex-direction: column; gap: 2px; min-height: 54px; font-size: .8rem; text-align: center; line-height: 1.15; }
 .pl-tabs.three .pl-tab span { font-size: .72rem; padding: 0 8px; }
+
+.pl-years { display: flex; gap: 8px; overflow-x: auto; margin: 0 -2px 12px; padding: 2px; scrollbar-width: none; }
+.pl-years::-webkit-scrollbar { display: none; }
+.pl-year { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 999px; background: var(--surface2); font-weight: 650; font-size: .92rem; color: var(--muted); }
+.pl-year span { font-size: .74rem; opacity: .8; }
+.pl-year.on { background: var(--gold); color: var(--ink-on-gold); }

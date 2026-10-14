@@ -48,7 +48,7 @@ function ProjectList({ items }: { items: { id: string; code: string | null; name
     );
 }
 
-export default async function Projelerim({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string }> }) {
+export default async function Projelerim({ searchParams }: { searchParams: Promise<{ sekme?: string; durum?: string; yil?: string }> }) {
     await requireFinancePage();
     const sp = await searchParams;
     const tab = sp.sekme === "teslim" || sp.durum === "teslim" ? "teslim" : sp.sekme === "alinacak" ? "alinacak" : "aktif";
@@ -66,6 +66,21 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
     const dueTotal = due.reduce((a, t) => a + t.amountTRY, 0);
     const active = all.filter(p => p.status === "ACTIVE" || p.status === "ON_HOLD" || p.status === "LEAD");
     const delivered = all.filter(p => p.status === "DONE");
+    // Teslim edilenler yıllara göre: yıl = bitiş tarihi, yoksa son hareket tarihi, yoksa oluşturma yılı
+    const [doneDates, lastTx] = delivered.length
+        ? await Promise.all([
+            prisma.finProject.findMany({ where: { id: { in: delivered.map(p => p.id) } }, select: { id: true, endDate: true, createdAt: true } }),
+            prisma.finTransaction.groupBy({ by: ["projectId"], where: { projectId: { in: delivered.map(p => p.id) } }, _max: { date: true } }),
+        ])
+        : [[], []];
+    const yearOf = new Map<string, number>(doneDates.map(d => {
+        const last = lastTx.find(x => x.projectId === d.id)?._max.date;
+        return [d.id, (d.endDate ?? last ?? d.createdAt).getUTCFullYear()];
+    }));
+    const thisYear = new Date().getUTCFullYear();
+    const years = [...new Set([thisYear, ...delivered.map(p => yearOf.get(p.id) ?? thisYear)])].sort((a, b) => b - a);
+    const year = years.includes(Number(sp.yil)) ? Number(sp.yil) : years[0];
+    const deliveredInYear = delivered.filter(p => (yearOf.get(p.id) ?? thisYear) === year);
     // Excel defterinden hazırlanmış, henüz eklenmemiş geçmiş işler (Teslim edilenler sekmesinde tek dokunuşla eklenir)
     const pending = LEGACY_IMPORTS.filter(l => !all.some(p => p.name.toLocaleLowerCase("tr") === l.name.toLocaleLowerCase("tr")));
 
@@ -105,7 +120,14 @@ export default async function Projelerim({ searchParams }: { searchParams: Promi
             {tab === "teslim" && (
                 <>
             {pending.filter(l => l.status === "DONE").map(l => <LegacyCard key={l.key} l={l} />)}
-                    {delivered.length === 0 && !pending.some(l => l.status === "DONE") ? <p className="pl-empty">Henüz teslim edilen proje yok.</p> : <ProjectList items={delivered} />}
+                    <nav className="pl-years" aria-label="Yıl">
+                        {years.map(y => (
+                            <Link key={y} href={`/?sekme=teslim&yil=${y}`} replace className={`pl-year${y === year ? " on" : ""}`} aria-current={y === year ? "page" : undefined}>
+                                {y} <span>{delivered.filter(p => (yearOf.get(p.id) ?? thisYear) === y).length}</span>
+                            </Link>
+                        ))}
+                    </nav>
+                    {deliveredInYear.length === 0 ? <p className="pl-empty">{year} yılında teslim edilen proje yok.</p> : <ProjectList items={deliveredInYear} />}
                 </>
             )}
 
