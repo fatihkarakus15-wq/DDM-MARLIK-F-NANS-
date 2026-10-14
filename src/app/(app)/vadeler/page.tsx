@@ -27,7 +27,11 @@ export default async function Vadeler({ searchParams }: { searchParams: Promise<
     const rates = await ensureFreshRates(600);
     const [rows, opts, recurringCount] = await Promise.all([
         prisma.finTransaction.findMany({
-            where: { ledgerId: ledger.id, status: "PLANNED", type: tur === "alacak" ? "INCOME" : tur === "borc" ? "EXPENSE" : { in: ["INCOME", "EXPENSE"] } },
+            // Usta / taşeron ödemeleri (kalem grubu "Taşeron ve usta" ya da cari türü taşeron) vadelerde gösterilmez
+            where: {
+                ledgerId: ledger.id, status: "PLANNED", type: tur === "alacak" ? "INCOME" : tur === "borc" ? "EXPENSE" : { in: ["INCOME", "EXPENSE"] },
+                NOT: { type: "EXPENSE", OR: [{ category: { parent: { name: "Taşeron ve usta" } } }, { category: { name: "Taşeron ve usta" } }, { contact: { kind: "SUBCONTRACTOR" } }] },
+            },
             orderBy: [{ date: "asc" }, { createdAt: "asc" }], take: MAX_ROWS + 1,
             include: { contact: { select: { name: true } }, project: { select: { name: true } }, cheque: { select: { status: true } }, recurring: { select: { title: true } } },
         }),
@@ -55,7 +59,7 @@ export default async function Vadeler({ searchParams }: { searchParams: Promise<
             <div className="adm-head">
                 <div>
                     <h1 className="adm-title">Vadeler</h1>
-                    <p className="adm-sub">Tahsil edilecek alacaklar ve ödenecek borçlar. Ödeme ya da tahsilat gerçekleşince “Ödendi” ile hesaba işleyin; kısmi tutar da girebilirsiniz.</p>
+                    <p className="adm-sub">Tahsil edilecek alacaklar ve ödenecek borçlar. Ödeme ya da tahsilat gerçekleşince “Ödendi” ile hesaba işleyin; kısmi tutar da girebilirsiniz. Usta ve taşeron ödemeleri bu listede gösterilmez.</p>
                 </div>
             </div>
 
