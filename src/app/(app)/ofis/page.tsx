@@ -43,10 +43,19 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
     ]);
     const txs = recs.length ? await prisma.finTransaction.findMany({
         where: { ledgerId: ledger.id, recurringId: { in: recs.map(r => r.id) }, date: { gte: monthStart } }, orderBy: { date: "asc" },
-        select: { id: true, recurringId: true, status: true, date: true, amount: true, currency: true },
+        select: { id: true, recurringId: true, status: true, date: true, amount: true, currency: true, spenderId: true, amountTRY: true },
     }) : [];
     const byRec = new Map<string, typeof txs>();
     for (const t of txs) byRec.set(t.recurringId!, [...(byRec.get(t.recurringId!) ?? []), t]);
+
+    const personName = (id: string | null) => opts.people.find(p => p.id === id)?.label;
+    /** Bu ay ödenen maaş ve sabit giderleri ödeyen kişiye göre */
+    const paidByMonth = new Map<string, number>();
+    let paidUnknown = 0;
+    for (const t of txs) if (t.status === "DONE" && t.date <= monthEnd) {
+        if (t.spenderId && personName(t.spenderId)) paidByMonth.set(t.spenderId, (paidByMonth.get(t.spenderId) ?? 0) + t.amountTRY);
+        else paidUnknown += t.amountTRY;
+    }
 
     const isSalary = (r: (typeof recs)[number]) => r.category?.name === "Maaş" || r.title.startsWith("Maaş");
     const salaries = recs.filter(isSalary);
@@ -83,11 +92,12 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
                                         <span><b>{r.title}</b><small>{FREQUENCY[r.frequency]}{r.category ? ` · ${r.category.name}` : ""}{!r.isActive ? " · durduruldu" : ""}</small></span>
                                         <span className="pay-amt"><b>{money(r.amount, r.currency)}</b>
                                             {r.isActive && (cur
-                                                ? <em className={`adm-badge ${cur.status === "DONE" ? "ok" : late ? "bad" : "warn"}`}>{cur.status === "DONE" ? "Bu ay ödendi" : `${late ? "Gecikmiş" : "Bekliyor"} · ${fmtDay(cur.date)}`}</em>
+                                                ? <em className={`adm-badge ${cur.status === "DONE" ? "ok" : late ? "bad" : "warn"}`}>{cur.status === "DONE" ? `Bu ay ödendi${personName(cur.spenderId) ? ` · ${personName(cur.spenderId)}` : ""}` : `${late ? "Gecikmiş" : "Bekliyor"} · ${fmtDay(cur.date)}`}</em>
                                                 : next ? <em className="adm-badge muted">Sonraki {fmtDay(next.date)}</em> : null)}
                                         </span>
                                     </summary>
                                     <div className="pay-body">
+                                        {cur?.status === "DONE" && <p className="adm-help">Ödeyen: <b>{personName(cur.spenderId) ?? "belirtilmemiş"}</b> · {fmtDay(cur.date)}</p>}
                                         {cur?.status === "PLANNED" && (
                                             <AdminForm action={settleAction} className="adm-inline">
                                                 <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={cur.id} />
@@ -126,6 +136,13 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
                 <Link href="/ofis?sekme=maas" replace className={`pl-tab${tab === "maas" ? " on" : ""}`}>Maaşlar <span>{salaries.length}</span></Link>
                 <Link href="/ofis?sekme=sabit" replace className={`pl-tab${tab === "sabit" ? " on" : ""}`}>Sabit giderler <span>{fixed.length}</span></Link>
             </nav>
+
+            {tab !== "ekstra" && (opts.people.length > 0) && (
+                <div className="pay-sum" style={{ border: 0, padding: 0, marginBottom: 14 }}>
+                    {opts.people.map(p => <div key={p.id}><small>{p.label} · bu ay ödedi</small><b>{tl0(paidByMonth.get(p.id) ?? 0)}</b></div>)}
+                    {paidUnknown > 0 && <div><small>Belirtilmemiş</small><b>{tl0(paidUnknown)}</b></div>}
+                </div>
+            )}
 
             {tab === "maas" && (
             <section className="adm-card" id="maaslar">

@@ -456,9 +456,10 @@ export async function deleteTransaction(_: ActionState, fd: FormData): Promise<A
 
 export async function settleAction(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
+        const user = await requireFinance();
         const ledger = await ledgerOf(fd);
         const r = await settleTransaction(ledger.id, str(fd, "id"), {
-            accountId: str(fd, "accountId", "Hesap"), date: day(fd, "date", "Tarih"), amount: optNum(fd, "amount", "Tutar"),
+            spenderId: user.id, accountId: str(fd, "accountId", "Hesap"), date: day(fd, "date", "Tarih"), amount: optNum(fd, "amount", "Tutar"),
         });
         refresh();
         return r.partial ? `Kısmi ödeme işlendi. Kalan vadeli tutar: ${r.left.toLocaleString("tr-TR")}.` : "Gerçekleşti olarak işlendi.";

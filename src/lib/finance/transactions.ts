@@ -150,7 +150,7 @@ export async function saveTransaction(fd: FormData, actor: string) {
  * Vadeli hareketi gerçekleştirir (ödendi / tahsil edildi). `amount` kalandan azsa kısmi ödeme:
  * ödenen kısım yeni gerçekleşen kayıt olur, vadeli kayıt kalan tutara iner.
  */
-export async function settleTransaction(ledgerId: string, id: string, input: { accountId: string; date: Date; amount?: number | null }) {
+export async function settleTransaction(ledgerId: string, id: string, input: { accountId: string; date: Date; amount?: number | null; spenderId?: string | null }) {
     const tx = await prisma.finTransaction.findFirst({ where: { id, ledgerId } });
     if (!tx) throw new FormError("Hareket bulunamadı.");
     if (tx.status !== "PLANNED") throw new FormError("Bu hareket zaten gerçekleşmiş.");
@@ -164,8 +164,10 @@ export async function settleTransaction(ledgerId: string, id: string, input: { a
     if (!(pay > 0)) throw new FormError("Ödenen tutarı yazın.");
     if (pay > tx.amount + 0.001) throw new FormError(`Ödenen tutar kalan tutardan (${tx.amount.toLocaleString("tr-TR")} ${tx.currency}) fazla olamaz.`);
 
+    // Gideri ödeyen kişi: ödemeyi işleyen kişi (verilmediyse önceden yazılı kişi korunur)
+    const spenderId = tx.type === "EXPENSE" ? (input.spenderId ?? tx.spenderId) : tx.spenderId;
     if (pay >= tx.amount - 0.001) {
-        await prisma.finTransaction.update({ where: { id }, data: { status: "DONE", accountId: input.accountId, date: input.date } });
+        await prisma.finTransaction.update({ where: { id }, data: { status: "DONE", accountId: input.accountId, date: input.date, spenderId } });
         return { partial: false, left: 0 };
     }
     const ratio = pay / tx.amount;
@@ -175,7 +177,7 @@ export async function settleTransaction(ledgerId: string, id: string, input: { a
             data: {
                 ledgerId, type: tx.type, status: "DONE", date: input.date, docDate: tx.docDate, docNo: tx.docNo, title: tx.title, note: tx.note ? `${tx.note} · kısmi ödeme` : "Kısmi ödeme",
                 amount: pay, currency: tx.currency, fxRate: tx.fxRate, amountTRY: r2(pay * tx.fxRate), vatRate: tx.vatRate, vatAmount: r2(tx.vatAmount * ratio), withholdingAmount: r2(tx.withholdingAmount * ratio),
-                accountId: input.accountId, categoryId: tx.categoryId, projectId: tx.projectId, contactId: tx.contactId, recurringId: null, createdBy: tx.createdBy,
+                accountId: input.accountId, categoryId: tx.categoryId, projectId: tx.projectId, contactId: tx.contactId, recurringId: null, createdBy: tx.createdBy, spenderId,
             },
         }),
         prisma.finTransaction.update({
