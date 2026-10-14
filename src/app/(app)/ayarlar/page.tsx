@@ -10,7 +10,7 @@ import { occurrences } from "@/lib/finance/recurring";
 import { addDays, fmtDay, today, ymd } from "@/lib/finance/dates";
 import { money } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
-import { changePassword, createLedger, deleteCategory, deleteRecurring, deleteRule, regenerateRecurring, renameLedger, saveCategory, saveManualRate, saveRecurring, saveRule, signOutOthers, inviteUser, deletePasskey } from "../actions";
+import { changePassword, createLedger, deleteCategory, deleteRecurring, deleteRule, regenerateRecurring, renameLedger, saveCategory, saveManualRate, saveRecurring, saveRule, signOutOthers, inviteUser, setUserCredentials, deletePasskey } from "../actions";
 import { PasskeyRegister } from "@/components/PasskeyButtons";
 import { getUser } from "@/lib/auth";
 import InstallHint from "@/components/InstallHint";
@@ -83,6 +83,14 @@ export default async function Ayarlar({ searchParams }: { searchParams: Promise<
                     <ul className="pk-list">
                         {users.map(u => <li key={u.id}><span>{u.name ? `${u.name} · ` : ""}{u.email} <small className="muted">· {u._count.passkeys} cihaz</small></span></li>)}
                     </ul>
+                    <h3 className="pk-sub">E-posta ve şifre belirle</h3>
+                    <AdminForm action={setUserCredentials} className="adm-form">
+                        <label className="adm-field"><span className="adm-label">Ad (yeni kullanıcı için)</span><input name="name" placeholder="Ör. Semih Bey" autoComplete="off" /></label>
+                        <label className="adm-field"><span className="adm-label">E-posta</span><input name="email" type="email" inputMode="email" required autoComplete="off" /></label>
+                        <label className="adm-field"><span className="adm-label">Şifre (en az 10 karakter)</span><input name="password" type="text" minLength={10} required autoComplete="off" /></label>
+                        <div className="adm-form-foot"><SubmitButton>Kaydet</SubmitButton><span className="adm-help">Kullanıcı yoksa açılır, varsa şifresi bu olur. Kişi bu e-posta ve şifreyle hemen girer; şifreyi ona siz iletin, sonra Ayarlar&apos;dan değiştirebilir.</span></div>
+                    </AdminForm>
+                    <h3 className="pk-sub">Davet bağlantısı (yüzle giriş)</h3>
                     <AdminForm action={inviteUser} className="adm-form">
                         <label className="adm-field"><span className="adm-label">Ad (yeni kullanıcı için)</span><input name="name" placeholder="Ör. Semih Bey" /></label>
                         <label className="adm-field"><span className="adm-label">E-posta</span><input name="email" type="email" inputMode="email" required /></label>

@@ -775,6 +775,28 @@ export async function signOutOthers(): Promise<ActionState> {
     });
 }
 
+/** Doğrudan e-posta + şifre: kullanıcı yoksa açılır, varsa şifresi yenilenir (eski oturumları kapanır) */
+export async function setUserCredentials(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const me = await requireFinance();
+        const email = str(fd, "email", "E-posta").toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new FormError("Geçerli bir e-posta yazın.");
+        const password = str(fd, "password", "Şifre");
+        if (password.length < 10) throw new FormError("Şifre en az 10 karakter olmalı.");
+        const name = String(fd.get("name") ?? "").trim() || null;
+        const passwordHash = await hashPassword(password);
+        const existing = await prisma.appUser.findUnique({ where: { email }, select: { id: true } });
+        if (existing) {
+            await prisma.appUser.update({ where: { id: existing.id }, data: { passwordHash, ...(name && { name }), inviteHash: null, inviteExpires: null, ...(existing.id !== me.id && { epoch: { increment: 1 } }) } });
+        } else {
+            if ((await prisma.appUser.count()) >= 5) throw new FormError("En fazla 5 kullanıcı eklenebilir.");
+            await prisma.appUser.create({ data: { email, name, passwordHash } });
+        }
+        revalidatePath("/ayarlar");
+        return existing ? `${email} için şifre güncellendi. Bu e-posta ve şifreyle giriş yapabilir.` : `${email} kullanıcısı eklendi. Bu e-posta ve şifreyle giriş yapabilir.`;
+    });
+}
+
 /** Yeni kullanıcı davet et (ya da var olan kullanıcıya yeni telefon eklemek için yeni bağlantı üret). Bağlantı 7 gün geçerli. */
 export async function inviteUser(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
