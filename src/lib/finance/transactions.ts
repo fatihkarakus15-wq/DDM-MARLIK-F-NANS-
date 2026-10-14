@@ -57,7 +57,7 @@ export async function parseTxForm(fd: FormData): Promise<ParsedTx> {
         status = "DONE";
         if (!accountId || !toAccountId) throw new FormError("Virman için çıkış ve giriş hesabını seçin.");
         if (accountId === toAccountId) throw new FormError("Çıkış ve giriş hesabı aynı olamaz.");
-    } else if (status === "DONE" && !accountId) {
+    } else if (status === "DONE" && !accountId && text(fd, "noAccount") !== "1") {
         throw new FormError("Gerçekleşen harekette hesabı seçin. Hesap yoksa 'Vadeli' kaydedin.");
     }
 

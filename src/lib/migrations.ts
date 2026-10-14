@@ -40,4 +40,9 @@ export const MIGRATIONS: Migration[] = [
         id: "005-harcayan-kisi",
         statements: [`ALTER TABLE "fin_transactions" ADD COLUMN IF NOT EXISTS "spenderId" TEXT`],
     },
+    {
+        id: "006-hesapsiz-harcamalar-odendi",
+        // Tuş takımından hesapsız girilen proje / ofis harcamaları "vadeli" kalmıştı ve Vadeler listesini dolduruyordu: ödendi sayılır
+        statements: [`UPDATE "fin_transactions" SET "status" = 'DONE' WHERE "status" = 'PLANNED' AND "type" = 'EXPENSE' AND "accountId" IS NULL AND "contactId" IS NULL AND "recurringId" IS NULL AND NOT EXISTS (SELECT 1 FROM "fin_cheques" c WHERE c."transactionId" = "fin_transactions"."id")`],
+    },
 ];

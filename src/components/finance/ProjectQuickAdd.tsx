@@ -11,6 +11,7 @@ interface Fav extends Opt { spent?: number }
 interface Props { ledgerId: string; projectId?: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string }
 
 const KEY = "ofis-finans:son-hesap";
+const PLANNED = "__vadeli";
 const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", ",", "0", "⌫"];
 const tl0 = (n: number) => `${Math.round(n).toLocaleString("tr-TR")} ₺`;
 
@@ -55,8 +56,10 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
         const amount = Number(raw.replace(",", "."));
         if (!amount || amount <= 0) { setMsg({ ok: false, text: "Önce tutarı girin." }); return; }
         const fd = new FormData();
-        fd.set("ledgerId", ledgerId); if (projectId) fd.set("projectId", projectId); fd.set("type", "EXPENSE"); fd.set("status", accountId ? "DONE" : "PLANNED");
-        fd.set("accountId", accountId); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
+        fd.set("ledgerId", ledgerId); if (projectId) fd.set("projectId", projectId); fd.set("type", "EXPENSE"); fd.set("status", accountId === PLANNED ? "PLANNED" : "DONE");
+        const realAccount = accountId === PLANNED ? "" : accountId;
+        if (!realAccount && accountId !== PLANNED) fd.set("noAccount", "1"); // hesap seçilmedi: ödendi olarak kaydedilir, hiçbir hesabın bakiyesini değiştirmez
+        fd.set("accountId", realAccount); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
         fd.set("title", note.trim() || label(categoryId) || (projectId ? "Harcama" : "Ofis harcaması"));
         if (file) fd.set("files", file);
         if (projectId && rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
@@ -120,7 +123,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
                 <summary>Not, hesap, tarih, fiş{note || file ? " ·" : ""}{note ? " not" : ""}{file ? " fiş" : ""}</summary>
                 <div className="sm-more-body">
                     <label>Not (ne alındı?)<input value={note} onChange={e => setNote(e.target.value)} placeholder="Ör. 20 torba çimento" maxLength={200} autoComplete="off" /></label>
-                    <label>Hesap<select value={accountId} onChange={e => setAccountId(e.target.value)}>{accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}<option value="">Henüz ödenmedi (vadeli)</option></select></label>
+                    <label>Hesap<select value={accountId} onChange={e => setAccountId(e.target.value)}>{accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}<option value="">Hesap yok (ödendi olarak kaydet)</option><option value={PLANNED}>Henüz ödenmedi (vadeli)</option></select></label>
                     <label>Tarih<input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
                     <label>Fiş / fatura<input type="file" accept="image/*,application/pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} /></label>
                 </div>
