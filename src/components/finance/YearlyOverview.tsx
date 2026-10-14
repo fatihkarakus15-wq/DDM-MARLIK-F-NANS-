@@ -23,12 +23,43 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
             </nav>
 
             <div className="adm-kpis">
-                <Kpi accent label={`${label}: ödenen rakamlar toplamı`} value={tl0(r.income)} note="müşterilerden alınan ödemeler" />
-                <Kpi label={`${label}: anlaşılan işlerin toplamı`} value={tl0(r.agreed)} note={`${r.projects.length} iş · harcama ${tl0(r.projects.reduce((s, p) => s + p.expense, 0))} · kâr ${tl0(r.projectProfit)}`} />
-                <Kpi label={`${label}: toplam gider`} value={tl0(totalExpense)} note={`işler ${tl0(r.projectExpense)} · ofis ${tl0(r.officeExpense)}`} />
+                <Kpi accent label={`${label}: anlaşılan işlerin toplamı`} value={tl0(r.agreed)} note={`${r.projects.length} iş · harcama ${tl0(r.projects.reduce((s, p) => s + p.expense, 0))} · kâr ${tl0(r.projectProfit)}`} />
+                <Kpi label={`${label}: ödenen rakamlar toplamı`} value={tl0(r.income)} note="müşterilerden alınan ödemeler" />
+                                <Kpi label={`${label}: toplam gider`} value={tl0(totalExpense)} note={`işler ${tl0(r.projectExpense)} · ofis ${tl0(r.officeExpense)}`} />
                 <Kpi label="Net kalan" value={<Amount value={r.net} digits={0} sign />} note={r.income ? `marj %${Math.round((r.net / r.income) * 100)}` : undefined} />
                 <Kpi label={`Kişi başı net (${r.people} kişi)`} value={<Amount value={r.net / r.people} digits={0} sign />} note="eşit paylaşımda" />
             </div>
+
+            <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">Anlaşılan işlerin detayı ({label})</h2><span className="adm-card-note">{r.projects.length} iş · toplam {tl0(r.agreed)} · işe dokunun</span></div>
+                {r.projects.length === 0 ? <p className="adm-empty">Bu dönemde iş yok.</p> : (
+                    <ul className="pay-list">
+                        {r.projects.map(p => (
+                            <li key={p.id}>
+                                <details className="pay-item">
+                                    <summary className="pay-row"><span><b>{p.name}</b><small>{p.status === "DONE" ? "teslim edildi" : "devam ediyor"} · harcama {tl0(p.expense)} · kâr {tl0(p.profit)}</small></span><span className="pay-amt"><b>{tl0(p.agreed)}</b><small>anlaşılan</small></span></summary>
+                                    <div className="pay-body">
+                                        <div className="adm-table-wrap"><table className="adm-table">
+                                            <thead><tr><th>Kalem</th><th className="num">Tutar</th></tr></thead>
+                                            <tbody>
+                                                <tr><td>İş bedeli</td><td className="num">{tl0(p.contract)}</td></tr>
+                                                {p.extras.map((e, i) => <tr key={`e${i}`}><td className="wrap">İlave: {e.title}</td><td className="num">{tl0(e.amount)}</td></tr>)}
+                                                <tr><td><b>Anlaşılan toplam</b></td><td className="num"><b>{tl0(p.agreed)}</b></td></tr>
+                                                {p.collections.map((c, i) => <tr key={`c${i}`}><td>Tahsilat · {c.date.split("-").reverse().join(".")}</td><td className="num">{tl0(c.amount)}</td></tr>)}
+                                                <tr><td><b>Tahsil edilen</b></td><td className="num"><b>{tl0(p.collected)}</b></td></tr>
+                                                {p.spend.map(x => <tr key={x.label}><td className="wrap">Harcama · {x.label}</td><td className="num">−{tl0(x.amount)}</td></tr>)}
+                                                <tr><td><b>Toplam harcama</b></td><td className="num"><b>−{tl0(p.expense)}</b></td></tr>
+                                                <tr><td><b>Kâr (anlaşılan − harcama)</b></td><td className="num"><b><Amount value={p.profit} digits={0} /></b></td></tr>
+                                                <tr><td>Alacak</td><td className="num">{p.receivable ? tl0(p.receivable) : "—"}</td></tr>
+                                            </tbody>
+                                        </table></div>
+                                    </div>
+                                </details>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
 
             <section className="adm-card">
                 <div className="adm-card-head"><h2 className="adm-card-title">Ödenen rakamlar detayı ({label})</h2><span className="adm-card-note">toplam {tl0(r.income)} · işe dokunun</span></div>
@@ -85,37 +116,6 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
                     </div>
                 )}
                 {ongoing > 0 && <p className="adm-help" style={{ padding: "10px 14px 14px" }}>Devam eden {ongoing} iş bu tabloda yok; tahsilat ve harcamaları yukarıdaki kazanç ve gider toplamlarında sayılıyor.</p>}
-            </section>
-
-            <section className="adm-card">
-                <div className="adm-card-head"><h2 className="adm-card-title">Kazanç detayı ({label})</h2><span className="adm-card-note">işe dokunun: bedel, tahsilat, harcama kalemleri</span></div>
-                {done.length === 0 ? <p className="adm-empty">Bu dönemde biten iş yok.</p> : (
-                    <ul className="pay-list">
-                        {done.map(p => (
-                            <li key={p.id}>
-                                <details className="pay-item">
-                                    <summary className="pay-row"><span><b>{p.name}</b><small>anlaşılan {tl0(p.agreed)} · harcama {tl0(p.expense)}</small></span><span className="pay-amt"><b><Amount value={p.profit} digits={0} /></b><small>kâr · kişi başı {tl0(p.profit / r.people)}</small></span></summary>
-                                    <div className="pay-body">
-                                        <div className="adm-table-wrap"><table className="adm-table">
-                                            <thead><tr><th>Kalem</th><th className="num">Tutar</th></tr></thead>
-                                            <tbody>
-                                                <tr><td>İş bedeli</td><td className="num">{tl0(p.contract)}</td></tr>
-                                                {p.extras.map((e, i) => <tr key={`e${i}`}><td className="wrap">İlave: {e.title}</td><td className="num">{tl0(e.amount)}</td></tr>)}
-                                                <tr><td><b>Anlaşılan toplam</b></td><td className="num"><b>{tl0(p.agreed)}</b></td></tr>
-                                                {p.collections.map((c, i) => <tr key={`c${i}`}><td>Tahsilat · {c.date.split("-").reverse().join(".")}</td><td className="num">{tl0(c.amount)}</td></tr>)}
-                                                <tr><td><b>Tahsil edilen</b></td><td className="num"><b>{tl0(p.collected)}</b></td></tr>
-                                                {p.spend.map(x => <tr key={x.label}><td className="wrap">Harcama · {x.label}</td><td className="num">−{tl0(x.amount)}</td></tr>)}
-                                                <tr><td><b>Toplam harcama</b></td><td className="num"><b>−{tl0(p.expense)}</b></td></tr>
-                                                <tr><td><b>Kâr (anlaşılan − harcama)</b></td><td className="num"><b><Amount value={p.profit} digits={0} /></b></td></tr>
-                                                <tr><td>Alacak</td><td className="num">{p.receivable ? tl0(p.receivable) : "—"}</td></tr>
-                                            </tbody>
-                                        </table></div>
-                                    </div>
-                                </details>
-                            </li>
-                        ))}
-                    </ul>
-                )}
             </section>
 
             <section className="adm-card">
