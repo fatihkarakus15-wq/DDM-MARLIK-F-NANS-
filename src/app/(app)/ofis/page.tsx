@@ -29,7 +29,11 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 12));
     const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 12));
     const rates = await ensureFreshRates(600);
-    const [extraTxs, recs, opts] = await Promise.all([
+    const yearStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1, 12));
+    const yearEnd = new Date(Date.UTC(now.getUTCFullYear(), 11, 31, 12));
+    const byWho = (gte: Date, lte: Date) => prisma.finTransaction.groupBy({ by: ["spenderId"], where: { ledgerId: ledger.id, type: "EXPENSE", projectId: null, recurringId: null, date: { gte, lte } }, _sum: { amountTRY: true }, _count: true });
+    const [whoMonth, whoYear, extraTxs, recs, opts] = await Promise.all([
+        byWho(monthStart, monthEnd), byWho(yearStart, yearEnd),
         prisma.finTransaction.findMany({
             where: { ledgerId: ledger.id, type: "EXPENSE", projectId: null, recurringId: null, date: { gte: monthStart, lte: monthEnd } }, orderBy: [{ date: "desc" }, { createdAt: "desc" }], take: 100,
             select: { id: true, title: true, amount: true, currency: true, amountTRY: true, date: true, status: true, category: { select: { id: true, name: true } } },
@@ -55,6 +59,12 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
     const left = thisMonth.filter(t => t.status === "PLANNED").reduce((a, t) => a + t.amount, 0);
     const todayDay = todayYmd();
     const expenseCats = opts.categories.filter(c => c.kind === "EXPENSE");
+    const whoRows = opts.people.map(p => ({
+        ...p,
+        month: whoMonth.find(x => x.spenderId === p.id)?._sum.amountTRY ?? 0, monthCount: whoMonth.find(x => x.spenderId === p.id)?._count ?? 0,
+        year: whoYear.find(x => x.spenderId === p.id)?._sum.amountTRY ?? 0,
+    }));
+    const unknownMonth = whoMonth.filter(x => !opts.people.some(p => p.id === x.spenderId)).reduce((a, x) => a + (x._sum.amountTRY ?? 0), 0);
     const extraTotal = extraTxs.reduce((a, t) => a + t.amountTRY, 0);
     const OFFICE_FAV = ["Kırtasiye", "Baskı ve plot", "Yemek", "Kahve / ikram", "Temizlik ve bakım", "Yakıt", "Aidat ve faturalar", "Ekipman", "Otopark / geçiş"];
     const spentBy = new Map<string, number>();
@@ -165,6 +175,15 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
 
             {tab === "ekstra" && (
                 <>
+                    <section className="adm-card">
+                        <div className="adm-card-head"><h2 className="adm-card-title">Kim ne kadar harcadı</h2><span className="adm-card-note">ofis ekstra harcamaları</span></div>
+                        <div className="pay-sum">
+                            {whoRows.map(w => (
+                                <div key={w.id}><small>{w.label} · bu ay</small><b>{tl0(w.month)}</b><small>{w.monthCount} harcama · bu yıl {tl0(w.year)}</small></div>
+                            ))}
+                        </div>
+                        {unknownMonth > 0 && <p className="adm-help" style={{ padding: "0 14px 14px" }}>Kimin yaptığı belirtilmemiş harcama: {tl0(unknownMonth)} (bu ay).</p>}
+                    </section>
                     <ProjectQuickAdd ledgerId={ledger.id} today={todayDay} accounts={opts.accounts} categories={expenseCats.map(c => ({ id: c.id, label: c.label }))} favorites={extraFavs} />
                     <section className="adm-card">
                         <div className="adm-card-head"><h2 className="adm-card-title">Bu ayki ekstra harcamalar</h2><span className="adm-card-note">Toplam {tl0(extraTotal)}</span></div>
