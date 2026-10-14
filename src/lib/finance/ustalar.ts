@@ -15,18 +15,19 @@ export const USTALAR: { name: string; aliases: string[] }[] = [
     { name: "Mehmet usta (boya)", aliases: ["mehmet usta boya", "mehmet usta", "mehmet boya"] },
     { name: "Deniz (boya)", aliases: ["deniz boya", "deniz"] },
     { name: "Kenan usta", aliases: ["kenan usta", "kenan abi", "kenan"] },
-    { name: "İbrahim", aliases: ["ibrahim", "i̇brahim"] },
+    { name: "İbrahim", aliases: ["ibrahim"] },
     { name: "Ercan", aliases: ["ercan"] },
     { name: "Boran", aliases: ["boran"] },
     { name: "Ali Gündüz", aliases: ["ali gündüz"] },
     { name: "Selami", aliases: ["selami"] },
-    { name: "İdris", aliases: ["idris", "i̇dris"] },
-    { name: "İzzet", aliases: ["izzet", "i̇zzet"] },
+    { name: "İdris", aliases: ["idris"] },
+    { name: "İzzet", aliases: ["izzet"] },
     { name: "Eyüp usta", aliases: ["eyüp usta", "eyüp"] },
     { name: "Yasir", aliases: ["yasir"] },
 ];
 
-const key = (v: string) => v.toLocaleLowerCase("tr").replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
+/** Büyük I / İ farkı olmadan karşılaştır ("Ibrahim" = "İbrahim") */
+const key = (v: string) => v.replace(/[İI]/g, "i").toLocaleLowerCase("tr").replace(/\([^)]*\)/g, "").replace(/\s+/g, " ").trim();
 const BY_ALIAS = new Map(USTALAR.flatMap(u => u.aliases.map(a => [key(a), u.name] as const)));
 /** Harcama başlığından usta adı (yoksa null) */
 export const ustaOf = (title: string) => BY_ALIAS.get(key(title)) ?? null;
