@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
 import { contactBalances } from "@/lib/finance/balances";
+import { receivablesReport } from "@/lib/finance/receivables";
+import { monthLabel, fmtDay } from "@/lib/finance/dates";
 import { CONTACT_KIND } from "@/lib/finance/labels";
 import { tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
@@ -18,9 +20,10 @@ export default async function Cariler({ searchParams }: { searchParams: Promise<
     await requireFinancePage();
     const { tur, duzenle, pasif, q } = await searchParams;
     const { ledger } = await activeLedger();
-    const [contacts, balances] = await Promise.all([
+    const [contacts, balances, rec] = await Promise.all([
         prisma.finContact.findMany({ where: { ledgerId: ledger.id }, orderBy: { name: "asc" } }),
         contactBalances(ledger.id),
+        receivablesReport(ledger.id),
     ]);
     const edit = duzenle ? contacts.find(c => c.id === duzenle) : undefined;
     const needle = q?.trim().toLocaleLowerCase("tr");
@@ -36,7 +39,43 @@ export default async function Cariler({ searchParams }: { searchParams: Promise<
                 </div>
             </div>
             <div className="adm-kpis">
-                <Kpi accent label="Toplam alacak" value={tl0(totals.r)} note="carilerden tahsil edilecek" />
+                <Kpi accent label="Toplam alacağımız (işlerden)" value={tl0(rec.remaining)} note={`anlaşılan ${tl0(rec.agreed)} − alınan ${tl0(rec.received)}`} />
+                <Kpi label="Plana girilmiş (vadeli)" value={tl0(rec.planned)} note={rec.overdue > 0 ? `geciken ${tl0(rec.overdue)}` : "geciken yok"} tone={rec.overdue > 0 ? "neg" : undefined} />
+                <Kpi label="Plana girilmemiş" value={tl0(rec.unplanned)} note="tarihi belli olmayan alacak" />
+                <Kpi label="Bu ay alınacak" value={tl0(rec.thisMonth)} note="bu aya planlı tahsilat" />
+            </div>
+
+            <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">Aylara göre alacak</h2><span className="adm-card-note">planlı tahsilatlar · aya dokunun</span></div>
+                {rec.months.length === 0 ? <p className="adm-empty">Planlı tahsilat yok. Proje sayfasındaki Tahsilat planından ekleyin.</p> : (
+                    <ul className="pay-list">
+                        {rec.months.map(m => (
+                            <li key={m.key} className={m.late ? "late" : ""}>
+                                <details className="pay-item">
+                                    <summary className="pay-row"><span><b>{m.late ? "Geciken (geçmiş aylar)" : monthLabel(m.key)}</b><small>{m.items.length} tahsilat</small></span><span className="pay-amt"><b>{tl0(m.total)}</b></span></summary>
+                                    <div className="pay-body"><div className="adm-table-wrap"><table className="adm-table"><tbody>
+                                        {m.items.map(i => <tr key={i.id}><td>{fmtDay(new Date(`${i.date}T12:00:00Z`))}</td><td className="wrap">{i.project ?? i.contact ?? i.title}</td><td className="num">{tl0(i.amount)}</td></tr>)}
+                                    </tbody></table></div></div>
+                                </details>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">İşlere göre alacak</h2><span className="adm-card-note">toplam {tl0(rec.remaining)}</span></div>
+                {rec.projects.length === 0 ? <p className="adm-empty">Alacak yok.</p> : (
+                    <div className="adm-table-wrap"><table className="adm-table">
+                        <thead><tr><th>İş</th><th className="num">Anlaşılan</th><th className="num">Alınan</th><th className="num">Kalan</th><th className="num">Planlı</th><th className="num">Plansız</th></tr></thead>
+                        <tbody>{rec.projects.map(p => <tr key={p.id}><td className="wrap"><Link className="adm-link" href={`/projeler/${p.id}#tahsilat`}>{p.name}</Link>{p.client && <span className="fin-sub">{p.client}</span>}</td><td className="num">{tl0(p.agreed)}</td><td className="num">{tl0(p.received)}</td><td className="num"><b>{tl0(p.remaining)}</b></td><td className="num">{tl0(p.planned)}</td><td className="num">{p.unplanned ? tl0(p.unplanned) : "—"}</td></tr>)}</tbody>
+                        <tfoot><tr><td>Toplam</td><td className="num">{tl0(rec.agreed)}</td><td className="num">{tl0(rec.received)}</td><td className="num">{tl0(rec.remaining)}</td><td className="num">{tl0(rec.planned)}</td><td className="num">{tl0(rec.unplanned)}</td></tr></tfoot>
+                    </table></div>
+                )}
+            </section>
+
+            <div className="adm-kpis">
+                <Kpi label="Toplam alacak (cari bakiyeleri)" value={tl0(totals.r)} note="carilerden tahsil edilecek" />
                 <Kpi label="Toplam borç" value={tl0(totals.p)} note="carilere ödenecek" />
                 <Kpi label="Net" value={<Amount value={totals.r - totals.p} digits={0} sign />} />
             </div>
