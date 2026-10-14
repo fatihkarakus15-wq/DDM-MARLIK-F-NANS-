@@ -14,6 +14,7 @@ import { Amount, Kpi } from "@/components/finance/ui";
 import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
+import { syncUstalar } from "@/lib/finance/ustalar";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
 import { addCollection, addExtra, reopenCollection, updateCollection, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
@@ -31,6 +32,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
     ]);
     if (!project) notFound();
+    // Hiç usta kaydı yoksa defterlerdeki ustaları bir kez ekle ve harcamalarla eşle
+    if (!(await prisma.finContact.count({ where: { ledgerId: ledger.id, kind: "SUBCONTRACTOR" } }))) await syncUstalar(ledger.id);
     const ustalar = await prisma.finContact.findMany({ where: { ledgerId: ledger.id, kind: "SUBCONTRACTOR", isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
     const ustaTx = await prisma.finTransaction.groupBy({ by: ["contactId", "status"], where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE", contactId: { in: ustalar.map(u => u.id) } }, _sum: { amountTRY: true }, _count: true });
     const [spent, extras, rebills, incomes, overview, costs, txs, opts] = await Promise.all([

@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireFinancePage } from "@/lib/finance/access";
 import { activeLedger } from "@/lib/finance/ledger";
-import { ustaReport, USTALAR } from "@/lib/finance/ustalar";
+import { prisma } from "@/lib/prisma";
+import { syncUstalar, ustaReport, USTALAR } from "@/lib/finance/ustalar";
 import { fmtDay } from "@/lib/finance/dates";
 import { tl0 } from "@/lib/finance/money";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
@@ -15,6 +16,7 @@ export const metadata = { title: "Ustalar" };
 export default async function Ustalar() {
     await requireFinancePage();
     const { ledger } = await activeLedger();
+    if (!(await prisma.finContact.count({ where: { ledgerId: ledger.id, kind: "SUBCONTRACTOR" } }))) await syncUstalar(ledger.id);
     const rows = await ustaReport(ledger.id);
     const paid = rows.reduce((s, r) => s + r.paid, 0), pending = rows.reduce((s, r) => s + r.pending, 0);
     const missing = USTALAR.filter(u => !rows.some(r => r.name.toLocaleLowerCase("tr") === u.name.toLocaleLowerCase("tr"))).length;
