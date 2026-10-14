@@ -48,3 +48,6 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.
+
+## Ustalar (2026-10-14)
+- Usta = `FinContact` (`kind: SUBCONTRACTOR`, "Taşeron / usta"); harcama `contactId` ile ustaya bağlanır. `/ustalar` (`lib/finance/ustalar.ts`): usta başına ödenen (gerçekleşen), bekleyen hakediş (vadeli), işe göre kırılım, "Usta ekle". Harcama tuş takımında (proje sayfası) "Usta" seçimi + "+ Usta ekle". Defterlerdeki 20 usta adı `USTALAR`'da; `syncUstalar` ("Defterlerdeki ustaları ekle ve eşle" düğmesi) cari açar ve başlığı usta adıyla eşleşen eski harcamaları bağlar; yeni içe aktarmalar otomatik bağlar. Göç yok.

@@ -18,6 +18,7 @@ import { parseDay, ymd } from "@/lib/finance/dates";
 import { loadRates, rateTRY, setManualRate } from "@/lib/finance/rates";
 import { FIRST_LOOKBACK_DAYS, generateRecurring } from "@/lib/finance/recurring";
 import { settleTransaction } from "@/lib/finance/transactions";
+import { syncUstalar } from "@/lib/finance/ustalar";
 import { validTckn } from "@/lib/finance/tckn";
 import { importLines } from "@/lib/finance/import";
 import { ASSET } from "@/lib/finance/labels";
@@ -136,6 +137,16 @@ export async function saveContact(_: ActionState, fd: FormData): Promise<ActionS
         else await prisma.finContact.create({ data: { ...data, ledgerId: ledger.id } });
         refresh();
         return id ? "Cari güncellendi." : "Cari eklendi.";
+    });
+}
+
+/** Defterlerdeki (PDF) ustaları cari olarak ekler ve harcamalarla eşler */
+export async function syncUstalarAction(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const r = await syncUstalar(ledger.id);
+        refresh();
+        return `${r.created} usta eklendi, ${r.linked} harcama ustayla eşlendi.`;
     });
 }
 

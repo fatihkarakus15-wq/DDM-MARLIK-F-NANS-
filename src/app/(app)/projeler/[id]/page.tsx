@@ -31,6 +31,8 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
         prisma.finTransaction.groupBy({ by: ["categoryId"], where: { ledgerId: ledger.id, type: "EXPENSE", categoryId: { not: null } }, _count: true, orderBy: { _count: { categoryId: "desc" } }, take: 6 }),
     ]);
     if (!project) notFound();
+    const ustalar = await prisma.finContact.findMany({ where: { ledgerId: ledger.id, kind: "SUBCONTRACTOR", isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } });
+    const ustaTx = await prisma.finTransaction.groupBy({ by: ["contactId", "status"], where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE", contactId: { in: ustalar.map(u => u.id) } }, _sum: { amountTRY: true }, _count: true });
     const [spent, extras, rebills, incomes, overview, costs, txs, opts] = await Promise.all([
         prisma.finTransaction.groupBy({ by: ["spenderId"], where: { ledgerId: ledger.id, projectId: id, type: "EXPENSE" }, _sum: { amountTRY: true }, _count: true }),
         prisma.finProjectExtra.findMany({ where: { projectId: id }, orderBy: [{ date: "asc" }, { createdAt: "asc" }] }),
@@ -114,7 +116,7 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
 
             <div id="ekle">
                 {opts.accounts.length === 0 && <p className="fin-warn">Önce <Link className="adm-link" href="/hesaplar">bir hesap ekleyin</Link> (banka, kasa). Şimdilik yalnızca “vadeli” kaydedilir.</p>}
-                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} initialCategoryId={kalem} key={kalem ?? "x"} />
+                <ProjectQuickAdd ledgerId={ledger.id} projectId={id} today={todayYmd()} accounts={opts.accounts} categories={expenseOpts.map(c => ({ id: c.id, label: c.label }))} favorites={favorites} ustalar={ustalar.map(u => ({ id: u.id, label: u.name }))} initialCategoryId={kalem} key={kalem ?? "x"} />
             </div>
 
             <h2 className="sm-h">Son harcamalar <span>· toplam {tl0(p.expense)}</span></h2>
@@ -144,6 +146,19 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                         </div>
                     )}
                     {unassigned.count > 0 && <p className="adm-help" style={{ padding: "0 14px 14px" }}>{unassigned.count} harcamada kimin yaptığı belirtilmemiş ({tl0(unassigned.total)}); hesaba katılmadı. Harcamayı açıp “Harcamayı yapan”ı seçebilirsiniz.</p>}
+                </section>
+            )}
+
+            {ustaTx.length > 0 && (
+                <section className="adm-card" id="ustalar">
+                    <div className="adm-card-head"><h2 className="adm-card-title">Ustalar</h2><span className="adm-card-note">bu işte kime ne kadar ödendi</span></div>
+                    <ul className="pay-list">
+                        {ustalar.filter(u => ustaTx.some(x => x.contactId === u.id)).map(u => {
+                            const paidU = ustaTx.filter(x => x.contactId === u.id && x.status === "DONE").reduce((a, x) => a + (x._sum.amountTRY ?? 0), 0);
+                            const pendU = ustaTx.filter(x => x.contactId === u.id && x.status === "PLANNED").reduce((a, x) => a + (x._sum.amountTRY ?? 0), 0);
+                            return <li key={u.id}><Link href={`/cariler/${u.id}`} className="pay-row"><span><b>{u.name}</b><small>{pendU > 0 ? `bekleyen hakediş ${tl0(pendU)}` : "ödenmiş"}</small></span><span className="pay-amt"><b>{tl0(paidU)}</b></span></Link></li>;
+                        })}
+                    </ul>
                 </section>
             )}
 

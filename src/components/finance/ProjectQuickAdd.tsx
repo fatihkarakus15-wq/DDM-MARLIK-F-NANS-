@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 
 interface Opt { id: string; label: string }
 interface Fav extends Opt { spent?: number }
-interface Props { ledgerId: string; projectId?: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string }
+interface Props { ledgerId: string; projectId?: string; today: string; accounts: (Opt & { currency: string })[]; categories: Opt[]; favorites: Fav[]; initialCategoryId?: string; ustalar?: Opt[] }
 
 const KEY = "ofis-finans:son-hesap";
 const PLANNED = "__vadeli";
@@ -23,13 +23,14 @@ function show(raw: string) {
     return d === undefined ? head : `${head},${d}`;
 }
 
-export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites, initialCategoryId }: Props) {
+export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, categories, favorites, initialCategoryId, ustalar }: Props) {
     const router = useRouter();
     const [raw, setRaw] = useState("");
     const [categoryId, setCategoryId] = useState(initialCategoryId ?? "");
     const [note, setNote] = useState("");
     const [date, setDate] = useState(today);
     const [file, setFile] = useState<File | null>(null);
+    const [ustaId, setUstaId] = useState("");
     const [rebill, setRebill] = useState(false);
     const [rebillAmt, setRebillAmt] = useState("");
     const [accountId, setAccountId] = useState(() => {
@@ -62,6 +63,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
         fd.set("accountId", realAccount); fd.set("categoryId", categoryId); fd.set("amount", raw); fd.set("date", date);
         fd.set("title", note.trim() || label(categoryId) || (projectId ? "Harcama" : "Ofis harcaması"));
         if (file) fd.set("files", file);
+        if (ustaId) fd.set("contactId", ustaId);
         if (projectId && rebill) fd.set("rebillAmount", rebillAmt.trim() || raw);
         setBusy(true); setMsg(null);
         try {
@@ -70,7 +72,7 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             if (!res.ok || !json?.success) { setMsg({ ok: false, text: json?.error ?? "Kaydedilemedi." }); return; }
             try { localStorage.setItem(KEY, accountId); } catch { /* depolama kapalı */ }
             setMsg({ ok: true, text: `${show(raw)} ₺ kaydedildi${categoryId ? ` · ${label(categoryId)}` : ""}` });
-            setRaw(""); setNote(""); setFile(null); setRebill(false); setRebillAmt(""); setCategoryId(initialCategoryId ?? "");
+            setRaw(""); setNote(""); setFile(null); setRebill(false); setRebillAmt(""); setUstaId(""); setCategoryId(initialCategoryId ?? "");
             router.refresh();
         } catch {
             setMsg({ ok: false, text: "Bağlantı kurulamadı. Tekrar deneyin." });
@@ -106,6 +108,18 @@ export default function ProjectQuickAdd({ ledgerId, projectId, today, accounts, 
             <div className="sm-keys" role="group" aria-label="Rakamlar">
                 {KEYS.map(k => <button key={k} type="button" onClick={() => press(k)} aria-label={k === "⌫" ? "Sil" : k}>{k}</button>)}
             </div>
+
+            {ustalar && (
+                <div className="sm-usta">
+                    <label>Usta (kime ödendi?)
+                        <select value={ustaId} onChange={e => setUstaId(e.target.value)}>
+                            <option value="">— usta yok —</option>
+                            {ustalar.map(u => <option key={u.id} value={u.id}>{u.label}</option>)}
+                        </select>
+                    </label>
+                    <a className="sm-usta-add" href="/ustalar#ekle">+ Usta ekle</a>
+                </div>
+            )}
 
             {projectId && (
                 <>

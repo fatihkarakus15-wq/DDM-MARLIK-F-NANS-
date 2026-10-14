@@ -4,6 +4,7 @@ import { FormError } from "@/lib/form";
 import { parseDay } from "./dates";
 import { r2 } from "./money";
 import type { LegacyProject } from "./legacy-imports";
+import { ustaOf } from "./ustalar";
 
 const norm = (v: string) => v.toLocaleLowerCase("tr").replace(/\s+/g, " ").trim();
 
@@ -23,6 +24,12 @@ export async function importLegacyProject(ledgerId: string, p: LegacyProject) {
     const result = await prisma.$transaction(async tx => {
         const contact = (await tx.finContact.findFirst({ where: { ledgerId, name: { equals: p.client, mode: "insensitive" } }, select: { id: true } }))
             ?? (await tx.finContact.create({ data: { ledgerId, name: p.client, kind: "CUSTOMER" }, select: { id: true } }));
+        const ustaIds = new Map<string, string>();
+        for (const n of new Set(p.expenses.map(e => ustaOf(e.title)).filter((x): x is string => !!x))) {
+            const c = (await tx.finContact.findFirst({ where: { ledgerId, name: { equals: n, mode: "insensitive" } }, select: { id: true } }))
+                ?? (await tx.finContact.create({ data: { ledgerId, name: n, kind: "SUBCONTRACTOR" }, select: { id: true } }));
+            ustaIds.set(n, c.id);
+        }
         const project = await tx.finProject.create({
             data: { ledgerId, name: p.name, clientId: contact.id, status: p.status, contractAmount: p.contractAmount, startDate: p.startDate ? day(p.startDate) : null, endDate: p.endDate ? day(p.endDate) : null, stage: p.stage ?? null, note: p.note ?? null },
             select: { id: true },
@@ -33,7 +40,7 @@ export async function importLegacyProject(ledgerId: string, p: LegacyProject) {
         await tx.finTransaction.createMany({
             data: p.expenses.map(e => ({
                 ...base, type: "EXPENSE" as const, date: day(e.date ?? p.defaultDate), title: e.title, amount: e.amount, amountTRY: e.amount,
-                categoryId: catId(e.category), spenderId: userId(e.spender),
+                categoryId: catId(e.category), spenderId: userId(e.spender), contactId: ustaIds.get(ustaOf(e.title) ?? "") ?? null,
             })),
         });
         return project.id;

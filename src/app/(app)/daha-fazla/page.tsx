@@ -12,6 +12,7 @@ const NOTES: Record<string, string> = {
     "/hareketler": "Gelir, gider ve virmanların tüm kayıtları",
     "/hesaplar": "Banka, kasa, kredi kartı, POS bakiyeleri",
     "/cariler": "Müşteri, tedarikçi, taşeron bakiyeleri ve ekstre",
+    "/ustalar": "Ustalara ödenen ve bekleyen hakediş, usta ekle",
     "/cek-senet": "Aldığınız ve verdiğiniz çek / senetler",
     "/nakit-akisi": "Gün gün kasa tahmini ve senaryolar",
     "/yatirimlar": "Döviz ve altın portföyü, anlık değer",
