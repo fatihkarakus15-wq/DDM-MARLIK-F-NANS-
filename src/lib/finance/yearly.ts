@@ -15,7 +15,7 @@ export interface YearlyReport {
 
 export async function yearlyReport(ledgerId: string, year: number | null): Promise<YearlyReport> {
     const [projects, txs, users] = await Promise.all([
-        prisma.finProject.findMany({ where: { ledgerId, status: { not: "CANCELLED" } }, select: { id: true, name: true, status: true, contractAmount: true, extras: { select: { title: true, amount: true } } } }),
+        prisma.finProject.findMany({ where: { ledgerId, status: { not: "CANCELLED" } }, select: { id: true, name: true, status: true, contractAmount: true, startDate: true, createdAt: true, extras: { select: { title: true, amount: true } } } }),
         prisma.finTransaction.findMany({
             where: { ledgerId, status: "DONE", type: { in: ["INCOME", "EXPENSE"] } },
             select: { type: true, date: true, amountTRY: true, projectId: true, title: true, category: { select: { name: true, parent: { select: { name: true } } } } },
@@ -59,8 +59,12 @@ export async function yearlyReport(ledgerId: string, year: number | null): Promi
         life.set(t.projectId, l);
     }
     const rows: YearlyProject[] = projects.flatMap(p => {
-        const l = life.get(p.id);
-        if (!l || !l.inYear) return [];
+        const l = life.get(p.id) ?? { collected: 0, expense: 0, inYear: false };
+        // Hareketi olmasa da: devam eden iş, başladığı yıldan itibaren; yeni eklenen iş hemen görünür
+        const startYear = (p.startDate ?? p.createdAt).getUTCFullYear();
+        const ongoing = p.status !== "DONE" && (year == null || year >= startYear);
+        const started = year == null || startYear === year;
+        if (!l.inYear && (p.status === "LEAD" || (!ongoing && !started))) return [];
         const agreed = (p.contractAmount ?? 0) + p.extras.reduce((s, e) => s + e.amount, 0);
         const base = agreed > 0 ? agreed : l.collected;
         const mine = txs.filter(t => t.projectId === p.id);
