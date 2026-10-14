@@ -12,16 +12,21 @@ import { Amount, Kpi } from "@/components/finance/ui";
 import { ColumnChart, LineChart } from "@/components/finance/charts";
 import { RateStrip } from "@/components/finance/LiveRates";
 import InstallHint from "@/components/InstallHint";
+import YearlyOverview from "@/components/finance/YearlyOverview";
+import { yearlyReport } from "@/lib/finance/yearly";
 
 export const dynamic = "force-dynamic";
 
 /** Finans özeti: nakit, alacak / borç, bu ay, 30 gün tahmini, uyarılar, kurlar, açık projeler */
-export default async function FinanceHome() {
+export default async function FinanceHome({ searchParams }: { searchParams: Promise<{ yil?: string }> }) {
     await requireFinancePage();
+    const { yil } = await searchParams;
     const { ledger } = await activeLedger();
     await generateRecurring(ledger.id);
     const rates = await ensureFreshRates(300);
-    const [dash, forecast, months, projects] = await Promise.all([
+    const reportYear = yil === "tumu" ? null : Number.isInteger(Number(yil)) && Number(yil) > 2000 ? Number(yil) : new Date().getUTCFullYear();
+    const [yearly, dash, forecast, months, projects] = await Promise.all([
+        yearlyReport(ledger.id, reportYear),
         loadDashboard(ledger.id, rates),
         cashForecast(ledger.id, rates, { days: 30 }),
         monthlyActuals(ledger.id, rates, 12),
@@ -60,6 +65,10 @@ export default async function FinanceHome() {
                     <Link href="/ice-aktar" className="btn btn-sm adm-btn-outline">Ekstre içe aktar</Link>
                 </div>
             </div>
+
+            <YearlyOverview r={yearly} />
+
+            <h2 className="pl-head" style={{ marginTop: 26 }}>Güncel durum</h2>
 
             <InstallHint />
 

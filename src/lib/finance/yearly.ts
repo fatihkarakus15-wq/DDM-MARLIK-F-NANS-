@@ -1,0 +1,73 @@
+/** Yıllık özet: bir yılda (ya da tüm zamanlarda) gelir, gider, ofis giderleri, işlere göre kâr. Hesapsız (geçmiş) kayıtlar dahil, KDV'siz değil: girilen tutarlarla. */
+import { prisma } from "@/lib/prisma";
+import { r2 } from "./money";
+
+export interface YearlyProject { id: string; name: string; status: string; agreed: number; collected: number; expense: number; profit: number; cashProfit: number; receivable: number }
+export interface YearlyReport {
+    years: number[]; year: number | null; people: number;
+    income: number; projectExpense: number; officeExpense: number; net: number;
+    agreed: number; collected: number; receivable: number; projectProfit: number;
+    monthly: { month: string; income: number; expense: number }[];
+    office: { label: string; amount: number }[];
+    projects: YearlyProject[];
+}
+
+export async function yearlyReport(ledgerId: string, year: number | null): Promise<YearlyReport> {
+    const [projects, txs, users] = await Promise.all([
+        prisma.finProject.findMany({ where: { ledgerId, status: { not: "CANCELLED" } }, select: { id: true, name: true, status: true, contractAmount: true, extras: { select: { amount: true } } } }),
+        prisma.finTransaction.findMany({
+            where: { ledgerId, status: "DONE", type: { in: ["INCOME", "EXPENSE"] } },
+            select: { type: true, date: true, amountTRY: true, projectId: true, category: { select: { name: true, parent: { select: { name: true } } } } },
+        }),
+        prisma.appUser.count(),
+    ]);
+    const thisYear = new Date().getUTCFullYear();
+    const years = [...new Set([thisYear, ...txs.map(t => t.date.getUTCFullYear())])].sort((a, b) => b - a);
+    const inYear = (d: Date) => year == null || d.getUTCFullYear() === year;
+    const sel = txs.filter(t => inYear(t.date));
+
+    const sum = (f: (t: (typeof txs)[number]) => boolean) => r2(sel.filter(f).reduce((s, t) => s + t.amountTRY, 0));
+    const income = sum(t => t.type === "INCOME");
+    const projectExpense = sum(t => t.type === "EXPENSE" && !!t.projectId);
+    const officeExpense = sum(t => t.type === "EXPENSE" && !t.projectId);
+
+    const mm = new Map<string, { income: number; expense: number }>();
+    for (const t of sel) {
+        const k = t.date.toISOString().slice(0, 7);
+        const m = mm.get(k) ?? { income: 0, expense: 0 };
+        if (t.type === "INCOME") m.income += t.amountTRY; else m.expense += t.amountTRY;
+        mm.set(k, m);
+    }
+    if (year != null) for (let i = 1; i <= 12; i++) { const k = `${year}-${String(i).padStart(2, "0")}`; if (!mm.has(k)) mm.set(k, { income: 0, expense: 0 }); }
+    const monthly = [...mm.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([month, v]) => ({ month, income: r2(v.income), expense: r2(v.expense) }));
+
+    const off = new Map<string, number>();
+    for (const t of sel) if (t.type === "EXPENSE" && !t.projectId) {
+        const label = t.category?.parent?.name ?? t.category?.name ?? "Kalemsiz";
+        off.set(label, (off.get(label) ?? 0) + t.amountTRY);
+    }
+    const office = [...off.entries()].map(([label, amount]) => ({ label, amount: r2(amount) })).sort((a, b) => b.amount - a.amount);
+
+    // İşlere göre (ömür boyu rakamlar; yıl seçiliyse o yılda hareketi olan işler)
+    const life = new Map<string, { collected: number; expense: number; inYear: boolean }>();
+    for (const t of txs) {
+        if (!t.projectId) continue;
+        const l = life.get(t.projectId) ?? { collected: 0, expense: 0, inYear: false };
+        if (t.type === "INCOME") l.collected += t.amountTRY; else l.expense += t.amountTRY;
+        if (inYear(t.date)) l.inYear = true;
+        life.set(t.projectId, l);
+    }
+    const rows: YearlyProject[] = projects.flatMap(p => {
+        const l = life.get(p.id);
+        if (!l || !l.inYear) return [];
+        const agreed = (p.contractAmount ?? 0) + p.extras.reduce((s, e) => s + e.amount, 0);
+        const base = agreed > 0 ? agreed : l.collected;
+        return [{ id: p.id, name: p.name, status: p.status, agreed: r2(agreed), collected: r2(l.collected), expense: r2(l.expense), profit: r2(base - l.expense), cashProfit: r2(l.collected - l.expense), receivable: r2(Math.max(0, agreed - l.collected)) }];
+    }).sort((a, b) => b.profit - a.profit);
+
+    return {
+        years, year, people: Math.max(1, users), income, projectExpense, officeExpense, net: r2(income - projectExpense - officeExpense),
+        agreed: r2(rows.reduce((s, r) => s + r.agreed, 0)), collected: r2(rows.reduce((s, r) => s + r.collected, 0)), receivable: r2(rows.reduce((s, r) => s + r.receivable, 0)),
+        projectProfit: r2(rows.reduce((s, r) => s + r.profit, 0)), monthly, office, projects: rows,
+    };
+}

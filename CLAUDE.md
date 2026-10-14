@@ -43,5 +43,8 @@ Mimarlık ofisi finansı için telefona kurulan uygulama (PWA, Next.js 16 App Ro
 ## Geçmiş işleri aktarma (2026-10-13)
 - Excel defterlerinden hazırlanan işler `lib/finance/legacy-imports.ts` içinde paket olarak durur (proje, müşteri, iş bedeli, ilave işler, tahsilatlar, harcamalar + kim harcadı); **Daha fazla > İçe aktar > Geçmiş işler** sayfasında "Teslim edilenlere ekle" ile `importLegacyProject` yazar (tek işlem, aynı adlı proje varsa eklemez). Kayıtlar hesapsız (DONE, accountId boş): hesap bakiyeleri değişmez. Yeni iş eklemek için pakete bir kayıt ekle. İlk paket: Köse ailesi (toplam teklif 849.000 = 600.000 + 249.000 ilave; harcama 618.452,50; tahsilat 734.000; tarihsiz harcamalar 18.02.2026).
 
+## Yıllık özet (2026-10-14)
+- **Genel özet** (`/ozet`) üstünde yıl seçici (2026, … ve Tümü) + `lib/finance/yearly.ts` / `components/finance/YearlyOverview.tsx`: yıl içindeki gerçekleşen gelir (tahsilat), gider (işler / ofis), net kalan, kişi başı net (kullanıcı sayısına bölünür), aylık gelir-gider grafiği, "hangi işten ne kadar kazandık" çubukları, **işlere göre tablo** (anlaşılan = iş bedeli + ilaveler, tahsil edilen, harcama, kâr = anlaşılan − harcama, kişi başı, alacak; rakamlar işin başından bugüne, yılda hareketi olan işler) ve ofis giderleri dağılımı. Altında eski "Güncel durum" bölümleri.
+
 ## Bilinen / yapılmadı
 Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildirimleri, e-Fatura, parmak izi/PIN kilidi, yıl sonu kapanışı.
