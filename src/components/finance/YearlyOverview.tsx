@@ -29,6 +29,29 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
                 <Kpi label={`Kişi başı net (${r.people} kişi)`} value={<Amount value={r.net / r.people} digits={0} sign />} note="eşit paylaşımda" />
             </div>
 
+            <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">Kazanç (tahsilat) detayı ({label})</h2><span className="adm-card-note">toplam {tl0(r.income)} · işe dokunun</span></div>
+                {r.incomeDetail.length === 0 ? <p className="adm-empty">Bu dönemde tahsilat yok.</p> : (
+                    <ul className="pay-list">
+                        {r.incomeDetail.map(g => (
+                            <li key={g.id ?? "dis"}>
+                                <details className="pay-item">
+                                    <summary className="pay-row"><span><b>{g.name}</b><small>{g.items.length} tahsilat{g.status === "DONE" ? " · teslim edildi" : g.status ? " · devam ediyor" : ""} · %{r.income ? Math.round((g.total / r.income) * 100) : 0}</small></span><span className="pay-amt"><b>{tl0(g.total)}</b></span></summary>
+                                    <div className="pay-body">
+                                        <div className="adm-table-wrap"><table className="adm-table">
+                                            <thead><tr><th>Tarih</th><th>Açıklama</th><th className="num">Tutar</th></tr></thead>
+                                            <tbody>{g.items.map((i, n) => <tr key={n}><td>{i.date.split("-").reverse().join(".")}</td><td className="wrap">{i.title}</td><td className="num">{tl0(i.amount)}</td></tr>)}</tbody>
+                                            <tfoot><tr><td colSpan={2}>Toplam</td><td className="num">{tl0(g.total)}</td></tr></tfoot>
+                                        </table></div>
+                                        {g.id && <p className="adm-help"><Link className="adm-link" href={`/projeler/${g.id}`}>Projeye git</Link></p>}
+                                    </div>
+                                </details>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
             <div className="fin-two">
                 <section className="adm-card">
                     <div className="adm-card-head"><h2 className="adm-card-title">{label}: aylık gelir ve gider</h2></div>

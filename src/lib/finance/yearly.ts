@@ -10,6 +10,7 @@ export interface YearlyReport {
     monthly: { month: string; income: number; expense: number }[];
     office: { label: string; amount: number }[];
     projects: YearlyProject[];
+    incomeDetail: { id: string | null; name: string; status: string | null; total: number; items: { date: string; title: string; amount: number }[] }[];
 }
 
 export async function yearlyReport(ledgerId: string, year: number | null): Promise<YearlyReport> {
@@ -73,8 +74,19 @@ export async function yearlyReport(ledgerId: string, year: number | null): Promi
         return [{ ...detail, id: p.id, name: p.name, status: p.status, agreed: r2(agreed), collected: r2(l.collected), expense: r2(l.expense), profit: r2(base - l.expense), cashProfit: r2(l.collected - l.expense), receivable: r2(Math.max(0, agreed - l.collected)) }];
     }).sort((a, b) => b.profit - a.profit);
 
+    // Kazanç (tahsilat) detayı: seçili dönemdeki gelirler işe göre, tek tek
+    const inc = new Map<string, { id: string | null; name: string; status: string | null; total: number; items: { date: string; title: string; amount: number }[] }>();
+    for (const t of sel.filter(t => t.type === "INCOME").sort((a, b) => a.date.getTime() - b.date.getTime())) {
+        const pr = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+        const k = t.projectId ?? "-";
+        const g = inc.get(k) ?? { id: pr?.id ?? null, name: pr?.name ?? "İş dışı gelirler", status: pr?.status ?? null, total: 0, items: [] };
+        g.total += t.amountTRY; g.items.push({ date: t.date.toISOString().slice(0, 10), title: t.title, amount: r2(t.amountTRY) });
+        inc.set(k, g);
+    }
+    const incomeDetail = [...inc.values()].map(g => ({ ...g, total: r2(g.total) })).sort((a, b) => b.total - a.total);
+
     return {
-        years, year, people: Math.max(1, users), income, projectExpense, officeExpense, net: r2(income - projectExpense - officeExpense),
+        incomeDetail, years, year, people: Math.max(1, users), income, projectExpense, officeExpense, net: r2(income - projectExpense - officeExpense),
         agreed: r2(rows.reduce((s, r) => s + r.agreed, 0)), collected: r2(rows.reduce((s, r) => s + r.collected, 0)), receivable: r2(rows.reduce((s, r) => s + r.receivable, 0)),
         projectProfit: r2(rows.reduce((s, r) => s + r.profit, 0)), monthly, office, projects: rows,
     };
