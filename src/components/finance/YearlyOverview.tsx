@@ -24,7 +24,7 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
 
             <div className="adm-kpis">
                 <Kpi accent label={`${label}: ödenen rakamlar toplamı`} value={tl0(r.income)} note="müşterilerden alınan ödemeler" />
-                <Kpi label={`${label}: alınan işlerin toplam kârı`} value={<Amount value={r.projectProfit} digits={0} sign />} note={`${r.projects.length} iş · anlaşılan ${tl0(r.agreed)} − harcama ${tl0(r.projects.reduce((s, p) => s + p.expense, 0))}`} />
+                <Kpi label={`${label}: anlaşılan işlerin toplamı`} value={tl0(r.agreed)} note={`${r.projects.length} iş · harcama ${tl0(r.projects.reduce((s, p) => s + p.expense, 0))} · kâr ${tl0(r.projectProfit)}`} />
                 <Kpi label={`${label}: toplam gider`} value={tl0(totalExpense)} note={`işler ${tl0(r.projectExpense)} · ofis ${tl0(r.officeExpense)}`} />
                 <Kpi label="Net kalan" value={<Amount value={r.net} digits={0} sign />} note={r.income ? `marj %${Math.round((r.net / r.income) * 100)}` : undefined} />
                 <Kpi label={`Kişi başı net (${r.people} kişi)`} value={<Amount value={r.net / r.people} digits={0} sign />} note="eşit paylaşımda" />
