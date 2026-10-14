@@ -64,6 +64,37 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
             </section>
 
             <section className="adm-card">
+                <div className="adm-card-head"><h2 className="adm-card-title">Kazanç detayı ({label})</h2><span className="adm-card-note">işe dokunun: bedel, tahsilat, harcama kalemleri</span></div>
+                {done.length === 0 ? <p className="adm-empty">Bu dönemde biten iş yok.</p> : (
+                    <ul className="pay-list">
+                        {done.map(p => (
+                            <li key={p.id}>
+                                <details className="pay-item">
+                                    <summary className="pay-row"><span><b>{p.name}</b><small>anlaşılan {tl0(p.agreed)} · harcama {tl0(p.expense)}</small></span><span className="pay-amt"><b><Amount value={p.profit} digits={0} /></b><small>kâr · kişi başı {tl0(p.profit / r.people)}</small></span></summary>
+                                    <div className="pay-body">
+                                        <div className="adm-table-wrap"><table className="adm-table">
+                                            <thead><tr><th>Kalem</th><th className="num">Tutar</th></tr></thead>
+                                            <tbody>
+                                                <tr><td>İş bedeli</td><td className="num">{tl0(p.contract)}</td></tr>
+                                                {p.extras.map((e, i) => <tr key={`e${i}`}><td className="wrap">İlave: {e.title}</td><td className="num">{tl0(e.amount)}</td></tr>)}
+                                                <tr><td><b>Anlaşılan toplam</b></td><td className="num"><b>{tl0(p.agreed)}</b></td></tr>
+                                                {p.collections.map((c, i) => <tr key={`c${i}`}><td>Tahsilat · {c.date.split("-").reverse().join(".")}</td><td className="num">{tl0(c.amount)}</td></tr>)}
+                                                <tr><td><b>Tahsil edilen</b></td><td className="num"><b>{tl0(p.collected)}</b></td></tr>
+                                                {p.spend.map(x => <tr key={x.label}><td className="wrap">Harcama · {x.label}</td><td className="num">−{tl0(x.amount)}</td></tr>)}
+                                                <tr><td><b>Toplam harcama</b></td><td className="num"><b>−{tl0(p.expense)}</b></td></tr>
+                                                <tr><td><b>Kâr (anlaşılan − harcama)</b></td><td className="num"><b><Amount value={p.profit} digits={0} /></b></td></tr>
+                                                <tr><td>Alacak</td><td className="num">{p.receivable ? tl0(p.receivable) : "—"}</td></tr>
+                                            </tbody>
+                                        </table></div>
+                                    </div>
+                                </details>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </section>
+
+            <section className="adm-card">
                 <div className="adm-card-head"><h2 className="adm-card-title">Ofis giderleri ({label})</h2><span className="adm-card-note">toplam {tl0(r.officeExpense)}</span></div>
                 <ShareBars items={r.office.map(o => ({ label: o.label, amount: o.amount, share: r.officeExpense ? (o.amount / r.officeExpense) * 100 : 0 }))} tone="s2" empty="Bu dönemde ofis gideri yok." />
             </section>

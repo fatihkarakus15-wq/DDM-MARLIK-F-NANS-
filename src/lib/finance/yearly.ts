@@ -2,7 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { r2 } from "./money";
 
-export interface YearlyProject { id: string; name: string; status: string; agreed: number; collected: number; expense: number; profit: number; cashProfit: number; receivable: number }
+export interface YearlyProject { id: string; name: string; status: string; agreed: number; collected: number; expense: number; profit: number; cashProfit: number; receivable: number; contract: number; extras: { title: string; amount: number }[]; collections: { date: string; amount: number }[]; spend: { label: string; amount: number }[] }
 export interface YearlyReport {
     years: number[]; year: number | null; people: number;
     income: number; projectExpense: number; officeExpense: number; net: number;
@@ -14,10 +14,10 @@ export interface YearlyReport {
 
 export async function yearlyReport(ledgerId: string, year: number | null): Promise<YearlyReport> {
     const [projects, txs, users] = await Promise.all([
-        prisma.finProject.findMany({ where: { ledgerId, status: { not: "CANCELLED" } }, select: { id: true, name: true, status: true, contractAmount: true, extras: { select: { amount: true } } } }),
+        prisma.finProject.findMany({ where: { ledgerId, status: { not: "CANCELLED" } }, select: { id: true, name: true, status: true, contractAmount: true, extras: { select: { title: true, amount: true } } } }),
         prisma.finTransaction.findMany({
             where: { ledgerId, status: "DONE", type: { in: ["INCOME", "EXPENSE"] } },
-            select: { type: true, date: true, amountTRY: true, projectId: true, category: { select: { name: true, parent: { select: { name: true } } } } },
+            select: { type: true, date: true, amountTRY: true, projectId: true, title: true, category: { select: { name: true, parent: { select: { name: true } } } } },
         }),
         prisma.appUser.count(),
     ]);
@@ -62,7 +62,15 @@ export async function yearlyReport(ledgerId: string, year: number | null): Promi
         if (!l || !l.inYear) return [];
         const agreed = (p.contractAmount ?? 0) + p.extras.reduce((s, e) => s + e.amount, 0);
         const base = agreed > 0 ? agreed : l.collected;
-        return [{ id: p.id, name: p.name, status: p.status, agreed: r2(agreed), collected: r2(l.collected), expense: r2(l.expense), profit: r2(base - l.expense), cashProfit: r2(l.collected - l.expense), receivable: r2(Math.max(0, agreed - l.collected)) }];
+        const mine = txs.filter(t => t.projectId === p.id);
+        const sp = new Map<string, number>();
+        for (const t of mine) if (t.type === "EXPENSE") { const k = t.category?.name ?? "Kalemsiz"; sp.set(k, (sp.get(k) ?? 0) + t.amountTRY); }
+        const detail = {
+            contract: r2(p.contractAmount ?? 0), extras: p.extras.map(e => ({ title: e.title, amount: r2(e.amount) })),
+            collections: mine.filter(t => t.type === "INCOME").sort((a, b) => a.date.getTime() - b.date.getTime()).map(t => ({ date: t.date.toISOString().slice(0, 10), amount: r2(t.amountTRY) })),
+            spend: [...sp.entries()].map(([label, amount]) => ({ label, amount: r2(amount) })).sort((a, b) => b.amount - a.amount),
+        };
+        return [{ ...detail, id: p.id, name: p.name, status: p.status, agreed: r2(agreed), collected: r2(l.collected), expense: r2(l.expense), profit: r2(base - l.expense), cashProfit: r2(l.collected - l.expense), receivable: r2(Math.max(0, agreed - l.collected)) }];
     }).sort((a, b) => b.profit - a.profit);
 
     return {
