@@ -563,3 +563,6 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 .pay-item > summary::after { content: "▾"; color: var(--muted); margin-left: 8px; font-size: .8rem; }
 .pay-item[open] > summary::after { content: "▴"; }
 .pay-body { padding: 10px 0 2px; display: grid; gap: 10px; }
+
+.fin-share-total { display: flex; justify-content: space-between; align-items: baseline; margin: 6px 14px 14px; padding: 12px 4px 0; border-top: 1px solid var(--cream-dim); font-size: .95rem; }
+.fin-share-total b { font: 700 1.15rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--gold); }

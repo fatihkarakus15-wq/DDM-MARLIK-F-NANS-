@@ -37,6 +37,7 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
                 <section className="adm-card">
                     <div className="adm-card-head"><h2 className="adm-card-title">Hangi işten ne kadar kazandık</h2><span className="adm-card-note">anlaşılan − harcama</span></div>
                     <ShareBars items={topProfit.map(p => ({ label: p.name, amount: p.profit, href: `/projeler/${p.id}` }))} tone="s3" empty="Bu dönemde iş yok." />
+                    {topProfit.length > 0 && <div className="fin-share-total"><span>Toplam ({done.length} iş)</span><b>{tl0(sumOf(p => p.profit))}</b></div>}
                 </section>
             </div>
 
