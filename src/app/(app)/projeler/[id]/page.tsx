@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addCollection, addExtra, updateCollection, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
+import { addCollection, addExtra, reopenCollection, updateCollection, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +151,26 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                                         <span><b>{fmtDay(t.date)}</b><small>{t.title}{project.client ? ` · ${project.client.name}` : ""}</small></span>
                                         <span className="pay-amt"><b>{money(t.amount, t.currency)}</b><em className={`adm-badge ${t.status === "DONE" ? "ok" : late ? "bad" : "warn"}`}>{t.status === "DONE" ? "Alındı" : late ? "Gecikmiş" : "Bekliyor"}</em></span>
                                     </div>
+                                    {t.status === "DONE" && (
+                                        <details className="pay-act">
+                                            <summary>Düzenle</summary>
+                                            <AdminForm action={updateCollection} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <label className="adm-field"><span className="adm-label">Tarih</span><input type="date" name="date" defaultValue={ymd(t.date)} required /></label>
+                                                <label className="adm-field"><span className="adm-label">Tutar (₺)</span><input name="amount" inputMode="decimal" defaultValue={String(t.amount).replace(".", ",")} required /></label>
+                                                <label className="adm-field"><span className="adm-label">Açıklama</span><input name="title" defaultValue={t.title} maxLength={200} /></label>
+                                                <SubmitButton className="btn btn-sm adm-btn-outline">Güncelle</SubmitButton>
+                                            </AdminForm>
+                                            <AdminForm action={reopenCollection} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <SubmitButton className="btn btn-sm adm-btn-outline" confirm="Alındı işareti geri alınsın mı? Tahsilat yeniden bekleyen plan olur.">Alındı işaretini geri al</SubmitButton>
+                                            </AdminForm>
+                                            <AdminForm action={deleteTransaction} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <SubmitButton className="btn btn-sm adm-btn-danger" confirm="Bu tahsilat kaydı silinsin mi?">Sil</SubmitButton>
+                                            </AdminForm>
+                                        </details>
+                                    )}
                                     {t.status === "PLANNED" && (
                                         <details className="pay-act">
                                             <summary>Alındı işle / planı düzenle</summary>
