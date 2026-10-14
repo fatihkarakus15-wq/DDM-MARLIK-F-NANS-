@@ -573,3 +573,7 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 .sm-usta select { width: 100%; padding: 11px 10px; border-radius: 10px; background: #e9f4ec; color: #000; font-weight: 600; border: 1px solid #fff; }
 .sm-usta select option { background: #fff; color: #000; }
 .sm-usta-add { padding: 11px 12px; border-radius: 10px; background: #e9f4ec; border: 1px solid #fff; color: #000; font-weight: 600; font-size: .85rem; white-space: nowrap; text-decoration: none; }
+
+/* Üst çubuk: giren kişinin adı */
+.app-who { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
+.app-user { font-size: .78rem; font-weight: 600; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
