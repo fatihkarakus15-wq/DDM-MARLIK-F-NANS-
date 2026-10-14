@@ -23,14 +23,15 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
             </nav>
 
             <div className="adm-kpis">
-                <Kpi accent label={`${label}: kazanç (tahsilat)`} value={tl0(r.income)} note="gerçekleşen gelir" />
+                <Kpi accent label={`${label}: ödenen rakamlar toplamı`} value={tl0(r.income)} note="müşterilerden alınan ödemeler" />
+                <Kpi label={`${label}: alınan işlerin toplam kârı`} value={<Amount value={r.projectProfit} digits={0} sign />} note={`${r.projects.length} iş · anlaşılan ${tl0(r.agreed)} − harcama ${tl0(r.projects.reduce((s, p) => s + p.expense, 0))}`} />
                 <Kpi label={`${label}: toplam gider`} value={tl0(totalExpense)} note={`işler ${tl0(r.projectExpense)} · ofis ${tl0(r.officeExpense)}`} />
                 <Kpi label="Net kalan" value={<Amount value={r.net} digits={0} sign />} note={r.income ? `marj %${Math.round((r.net / r.income) * 100)}` : undefined} />
                 <Kpi label={`Kişi başı net (${r.people} kişi)`} value={<Amount value={r.net / r.people} digits={0} sign />} note="eşit paylaşımda" />
             </div>
 
             <section className="adm-card">
-                <div className="adm-card-head"><h2 className="adm-card-title">Kazanç (tahsilat) detayı ({label})</h2><span className="adm-card-note">toplam {tl0(r.income)} · işe dokunun</span></div>
+                <div className="adm-card-head"><h2 className="adm-card-title">Ödenen rakamlar detayı ({label})</h2><span className="adm-card-note">toplam {tl0(r.income)} · işe dokunun</span></div>
                 {r.incomeDetail.length === 0 ? <p className="adm-empty">Bu dönemde tahsilat yok.</p> : (
                     <ul className="pay-list">
                         {r.incomeDetail.map(g => (
