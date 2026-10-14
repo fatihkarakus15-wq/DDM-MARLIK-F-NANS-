@@ -10,7 +10,11 @@ import { Amount, Kpi } from "@/components/finance/ui";
 export default function YearlyOverview({ r }: { r: YearlyReport }) {
     const label = r.year == null ? "Tüm zamanlar" : String(r.year);
     const totalExpense = r.projectExpense + r.officeExpense;
-    const topProfit = r.projects.filter(p => p.profit > 0).slice(0, 8);
+    // İş tabloları ve çubuklar yalnızca biten (teslim edilen) işleri gösterir; devam edenler dışarıda
+    const done = r.projects.filter(p => p.status === "DONE");
+    const ongoing = r.projects.length - done.length;
+    const topProfit = done.filter(p => p.profit > 0).slice(0, 8);
+    const sumOf = (f: (p: (typeof done)[number]) => number) => done.reduce((s, p) => s + f(p), 0);
     return (
         <section className="yr" aria-label="Yıllık özet">
             <nav className="pl-years" aria-label="Yıl">
@@ -37,24 +41,25 @@ export default function YearlyOverview({ r }: { r: YearlyReport }) {
             </div>
 
             <section className="adm-card">
-                <div className="adm-card-head"><h2 className="adm-card-title">İşlere göre ({label})</h2><span className="adm-card-note">{r.projects.length} iş · rakamlar işin başından bugüne</span></div>
-                {r.projects.length === 0 ? <p className="adm-empty">Bu dönemde hareketi olan iş yok.</p> : (
+                <div className="adm-card-head"><h2 className="adm-card-title">Biten işler ({label})</h2><span className="adm-card-note">{done.length} iş · rakamlar işin başından bugüne</span></div>
+                {done.length === 0 ? <p className="adm-empty">Bu dönemde biten iş yok.</p> : (
                     <div className="adm-table-wrap">
                         <table className="adm-table">
                             <thead><tr><th>İş</th><th className="num">Anlaşılan</th><th className="num">Tahsil edilen</th><th className="num">Harcama</th><th className="num">Kâr</th><th className="num">Kişi başı</th><th className="num">Alacak</th></tr></thead>
                             <tbody>
-                                {r.projects.map(p => (
+                                {done.map(p => (
                                     <tr key={p.id}>
-                                        <td className="wrap"><Link className="adm-link" href={`/projeler/${p.id}`}>{p.name}</Link>{p.status !== "DONE" && <span className="fin-sub">devam ediyor</span>}</td>
+                                        <td className="wrap"><Link className="adm-link" href={`/projeler/${p.id}`}>{p.name}</Link></td>
                                         <td className="num">{tl0(p.agreed)}</td><td className="num">{tl0(p.collected)}</td><td className="num">{tl0(p.expense)}</td>
                                         <td className="num"><Amount value={p.profit} digits={0} /></td><td className="num">{tl0(p.profit / r.people)}</td><td className="num">{p.receivable ? tl0(p.receivable) : "—"}</td>
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot><tr><td>Toplam</td><td className="num">{tl0(r.agreed)}</td><td className="num">{tl0(r.collected)}</td><td className="num">{tl0(r.projects.reduce((s, p) => s + p.expense, 0))}</td><td className="num">{tl0(r.projectProfit)}</td><td className="num">{tl0(r.projectProfit / r.people)}</td><td className="num">{tl0(r.receivable)}</td></tr></tfoot>
+                            <tfoot><tr><td>Toplam</td><td className="num">{tl0(sumOf(p => p.agreed))}</td><td className="num">{tl0(sumOf(p => p.collected))}</td><td className="num">{tl0(sumOf(p => p.expense))}</td><td className="num">{tl0(sumOf(p => p.profit))}</td><td className="num">{tl0(sumOf(p => p.profit) / r.people)}</td><td className="num">{sumOf(p => p.receivable) ? tl0(sumOf(p => p.receivable)) : "—"}</td></tr></tfoot>
                         </table>
                     </div>
                 )}
+                {ongoing > 0 && <p className="adm-help" style={{ padding: "10px 14px 14px" }}>Devam eden {ongoing} iş bu tabloda yok; tahsilat ve harcamaları yukarıdaki kazanç ve gider toplamlarında sayılıyor.</p>}
             </section>
 
             <section className="adm-card">
