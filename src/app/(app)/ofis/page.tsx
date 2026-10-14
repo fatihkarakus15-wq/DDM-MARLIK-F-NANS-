@@ -22,7 +22,7 @@ const perMonth = (amount: number, f: string) => (f === "YEARLY" ? amount / 12 : 
 export default async function OfisGiderleri({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
     await requireFinancePage();
     const { sekme } = await searchParams;
-    const tab = sekme === "sabit" ? "sabit" : sekme === "ekstra" ? "ekstra" : "maas";
+    const tab = sekme === "sabit" ? "sabit" : sekme === "maas" ? "maas" : "ekstra";
     const { ledger } = await activeLedger();
     await generateRecurring(ledger.id);
     const now = today();
@@ -112,9 +112,9 @@ export default async function OfisGiderleri({ searchParams }: { searchParams: Pr
             </div>
 
             <nav className="pl-tabs three" aria-label="Ofis giderleri">
-                <Link href="/ofis" replace className={`pl-tab${tab === "maas" ? " on" : ""}`}>Maaşlar <span>{salaries.length}</span></Link>
+                <Link href="/ofis" replace className={`pl-tab${tab === "ekstra" ? " on" : ""}`}>Ekstra <span>{extraTxs.length}</span></Link>
+                <Link href="/ofis?sekme=maas" replace className={`pl-tab${tab === "maas" ? " on" : ""}`}>Maaşlar <span>{salaries.length}</span></Link>
                 <Link href="/ofis?sekme=sabit" replace className={`pl-tab${tab === "sabit" ? " on" : ""}`}>Sabit giderler <span>{fixed.length}</span></Link>
-                <Link href="/ofis?sekme=ekstra" replace className={`pl-tab${tab === "ekstra" ? " on" : ""}`}>Ekstra <span>{extraTxs.length}</span></Link>
             </nav>
 
             {tab === "maas" && (
