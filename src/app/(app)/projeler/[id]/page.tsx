@@ -15,7 +15,7 @@ import ShareBars from "@/components/finance/ShareBars";
 import { LineChart } from "@/components/finance/charts";
 import TxForm from "@/components/finance/TxForm";
 import ProjectQuickAdd from "@/components/finance/ProjectQuickAdd";
-import { addCollection, addExtra, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
+import { addCollection, addExtra, updateCollection, addProjectItem, deleteExtra, deleteProject, deleteProjectWithData, deleteTransaction, planRebill, saveBudgetLine, saveProjectDetails, setProjectDelivered, settleAction } from "../../actions";
 
 export const dynamic = "force-dynamic";
 
@@ -153,7 +153,14 @@ export default async function ProjeDetay({ params, searchParams }: { params: Pro
                                     </div>
                                     {t.status === "PLANNED" && (
                                         <details className="pay-act">
-                                            <summary>Alındı olarak işle</summary>
+                                            <summary>Alındı işle / planı düzenle</summary>
+                                            <AdminForm action={updateCollection} className="adm-inline">
+                                                <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
+                                                <label className="adm-field"><span className="adm-label">Planlanan tarih</span><input type="date" name="date" defaultValue={ymd(t.date)} required /></label>
+                                                <label className="adm-field"><span className="adm-label">Tutar (₺)</span><input name="amount" inputMode="decimal" defaultValue={String(t.amount).replace(".", ",")} required /></label>
+                                                <label className="adm-field"><span className="adm-label">Açıklama</span><input name="title" defaultValue={t.title} maxLength={200} /></label>
+                                                <SubmitButton className="btn btn-sm adm-btn-outline">Planı güncelle</SubmitButton>
+                                            </AdminForm>
                                             <AdminForm action={settleAction} className="adm-inline">
                                                 <input type="hidden" name="ledgerId" value={ledger.id} /><input type="hidden" name="id" value={t.id} />
                                                 <label className="adm-field"><span className="adm-label">Hangi hesaba</span><select name="accountId" required>{opts.accounts.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}</select></label>

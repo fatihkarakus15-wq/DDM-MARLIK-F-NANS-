@@ -227,6 +227,22 @@ export async function addCollection(_: ActionState, fd: FormData): Promise<Actio
     });
 }
 
+/** Planlanan tahsilatı revize eder: tarih, tutar, açıklama (yalnızca henüz alınmamış plan) */
+export async function updateCollection(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const amount = r2(num(fd, "amount", "Tutar"));
+        if (!(amount > 0)) throw new FormError("Tutar sıfırdan büyük olmalı.");
+        const upd = await prisma.finTransaction.updateMany({
+            where: { id: str(fd, "id"), ledgerId: ledger.id, type: "INCOME", status: "PLANNED" },
+            data: { date: day(fd, "date", "Tahsilat tarihi"), amount, amountTRY: amount, title: (optStr(fd, "title") ?? "Tahsilat").slice(0, 200) },
+        });
+        must(upd.count, "Tahsilat planı");
+        refresh();
+        return "Plan güncellendi.";
+    });
+}
+
 /** İlave iş: projeye sonradan gelen iş ve tutarı (iş bedeline eklenir) */
 export async function addExtra(_: ActionState, fd: FormData): Promise<ActionState> {
     return run(async () => {
