@@ -4,6 +4,7 @@ export const ICONS: Record<string, string> = {
     ozet: "M3 11.5 12 4l9 7.5M5.5 10v9.5h13V10",
     hareketler: "M4 6h16M4 12h16M4 18h10",
     ekle: "M12 5v14M5 12h14",
+    takvim: "M5 5.5h14v14H5zM5 10h14M9 3.5V7M15 3.5V7M8.5 13.5h.01M12 13.5h.01M15.5 13.5h.01M8.5 16.5h.01M12 16.5h.01",
     vadeler: "M5 6h14v13H5zM5 10h14M9 3.5V7M15 3.5V7",
     daha: "M5 12h.01M12 12h.01M19 12h.01",
     hesaplar: "M3.5 7.5h17v11h-17zM3.5 7.5l3-3h11l3 3M15.5 13h2",
@@ -21,6 +22,7 @@ export interface Item { href: string; label: string; icon: keyof typeof ICONS; s
 export const ITEMS: Item[] = [
     { href: "/", label: "Projeler", icon: "projeler", slot: "tab", match: ["/projeler"] },
     { href: "/ofis", label: "Ofis", icon: "ofis", slot: "tab" },
+    { href: "/takvim", label: "Takvim", icon: "takvim", slot: "tab" },
     { href: "/vadeler", label: "Vadeler", icon: "vadeler", slot: "tab" },
     { href: "/daha-fazla", label: "Daha fazla", icon: "daha", slot: "more", match: ["/ozet", "/hareketler", "/hesaplar", "/cariler", "/ustalar", "/cek-senet", "/nakit-akisi", "/yatirimlar", "/raporlar", "/ice-aktar", "/ayarlar"] },
     { href: "/ozet", label: "Genel özet", icon: "ozet", slot: "desk" },

@@ -67,6 +67,7 @@ model FinLedger {
   projects     FinProject[]
   transactions FinTransaction[]
   recurrings   FinRecurring[]
+  events       FinEvent[]
   cheques      FinCheque[]
   rules        FinRule[]
   investments  FinInvestment[]
@@ -195,6 +196,7 @@ model FinProject {
   budgetLines  FinBudgetLine[]
   transactions FinTransaction[]
   recurrings   FinRecurring[]
+  events       FinEvent[]
   cheques      FinCheque[]
   rules        FinRule[]
   extras       FinProjectExtra[]
@@ -217,6 +219,29 @@ model FinProjectExtra {
 
   @@index([projectId])
   @@map("fin_project_extras")
+}
+
+// Ortak takvim: keşif, toplantı, görev ve günlük program (bütün kullanıcılar görür)
+model FinEvent {
+  id         String      @id @default(cuid())
+  ledgerId   String
+  ledger     FinLedger   @relation(fields: [ledgerId], references: [id], onDelete: Cascade)
+  title      String
+  kind       String      @default("DIGER") // KESIF, TOPLANTI, TESLIM, GOREV, DIGER
+  date       DateTime    // gün, öğlen 12:00 UTC
+  startTime  String?     // "14:30"
+  endTime    String?
+  location   String?
+  note       String?
+  projectId  String?
+  project    FinProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  assigneeId String?     // AppUser.id; boşsa ikimiz
+  done       Boolean     @default(false)
+  createdBy  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([ledgerId, date])
+  @@map("fin_events")
 }
 
 enum FinProjectStatus {

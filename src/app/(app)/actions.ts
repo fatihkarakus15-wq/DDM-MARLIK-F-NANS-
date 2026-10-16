@@ -18,6 +18,7 @@ import { parseDay, ymd } from "@/lib/finance/dates";
 import { loadRates, rateTRY, setManualRate } from "@/lib/finance/rates";
 import { FIRST_LOOKBACK_DAYS, generateRecurring } from "@/lib/finance/recurring";
 import { settleTransaction } from "@/lib/finance/transactions";
+import { cleanTime, EVENT_KINDS } from "@/lib/finance/events";
 import { syncUstalar } from "@/lib/finance/ustalar";
 import { validTckn } from "@/lib/finance/tckn";
 import { importLines } from "@/lib/finance/import";
@@ -829,5 +830,51 @@ export async function deletePasskey(_: ActionState, fd: FormData): Promise<Actio
         if (!del.count) throw new FormError("Kayıt bulunamadı.");
         revalidatePath("/ayarlar");
         return n <= 1 ? "Kayıt silindi. Artık şifreyle girmeniz gerekir." : "Kayıt silindi.";
+    });
+}
+
+// ── Ortak takvim ────────────────────────────────────────
+
+export async function saveEvent(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const me = await requireFinance();
+        const ledger = await ledgerOf(fd);
+        const id = optStr(fd, "id");
+        const kind = str(fd, "kind");
+        if (!EVENT_KINDS[kind]) throw new FormError("Etkinlik türü geçersiz.");
+        const projectId = optStr(fd, "projectId");
+        const assigneeId = optStr(fd, "assigneeId");
+        await assertOwned(ledger.id, { projectId });
+        if (assigneeId && !(await prisma.appUser.count({ where: { id: assigneeId } }))) throw new FormError("Kişi bulunamadı.");
+        const data = {
+            title: str(fd, "title", "Başlık").slice(0, 140), kind, date: day(fd, "date", "Tarih"),
+            startTime: cleanTime(optStr(fd, "startTime")), endTime: cleanTime(optStr(fd, "endTime")),
+            location: optStr(fd, "location")?.slice(0, 200) ?? null, note: optStr(fd, "note")?.slice(0, 1000) ?? null, projectId, assigneeId,
+        };
+        if (id) must((await prisma.finEvent.updateMany({ where: { id, ledgerId: ledger.id }, data })).count, "Etkinlik");
+        else await prisma.finEvent.create({ data: { ...data, ledgerId: ledger.id, createdBy: me.id } });
+        revalidatePath("/takvim");
+        return id ? "Etkinlik güncellendi." : "Etkinlik eklendi.";
+    });
+}
+
+export async function toggleEvent(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        const id = str(fd, "id");
+        const ev = await prisma.finEvent.findFirst({ where: { id, ledgerId: ledger.id }, select: { done: true } });
+        if (!ev) throw new FormError("Etkinlik bulunamadı.");
+        await prisma.finEvent.update({ where: { id }, data: { done: !ev.done } });
+        revalidatePath("/takvim");
+        return ev.done ? "Yeniden açıldı." : "Tamamlandı olarak işaretlendi.";
+    });
+}
+
+export async function deleteEvent(_: ActionState, fd: FormData): Promise<ActionState> {
+    return run(async () => {
+        const ledger = await ledgerOf(fd);
+        must((await prisma.finEvent.deleteMany({ where: { id: str(fd, "id"), ledgerId: ledger.id } })).count, "Etkinlik");
+        revalidatePath("/takvim");
+        return "Etkinlik silindi.";
     });
 }

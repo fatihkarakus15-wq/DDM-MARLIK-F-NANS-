@@ -45,4 +45,11 @@ export const MIGRATIONS: Migration[] = [
         // Tuş takımından hesapsız girilen proje / ofis harcamaları "vadeli" kalmıştı ve Vadeler listesini dolduruyordu: ödendi sayılır
         statements: [`UPDATE "fin_transactions" SET "status" = 'DONE' WHERE "status" = 'PLANNED' AND "type" = 'EXPENSE' AND "accountId" IS NULL AND "contactId" IS NULL AND "recurringId" IS NULL AND NOT EXISTS (SELECT 1 FROM "fin_cheques" c WHERE c."transactionId" = "fin_transactions"."id")`],
     },
+    {
+        id: "007-takvim",
+        statements: [
+            `CREATE TABLE IF NOT EXISTS "fin_events" ("id" TEXT NOT NULL PRIMARY KEY, "ledgerId" TEXT NOT NULL REFERENCES "fin_ledgers"("id") ON DELETE CASCADE ON UPDATE CASCADE, "title" TEXT NOT NULL, "kind" TEXT NOT NULL DEFAULT 'DIGER', "date" TIMESTAMP(3) NOT NULL, "startTime" TEXT, "endTime" TEXT, "location" TEXT, "note" TEXT, "projectId" TEXT REFERENCES "fin_projects"("id") ON DELETE SET NULL ON UPDATE CASCADE, "assigneeId" TEXT, "done" BOOLEAN NOT NULL DEFAULT false, "createdBy" TEXT, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+            `CREATE INDEX IF NOT EXISTS "fin_events_ledgerId_date_idx" ON "fin_events"("ledgerId", "date")`,
+        ],
+    },
 ];

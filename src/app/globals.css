@@ -577,3 +577,24 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 /* Üst çubuk: giren kişinin adı */
 .app-who { display: flex; flex-direction: column; line-height: 1.15; min-width: 0; }
 .app-user { font-size: .78rem; font-weight: 600; opacity: .85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Ortak takvim */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px 4px; }
+.cal-head b { flex: 1; text-align: center; font-size: 1.05rem; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; padding: 8px 10px 10px; }
+.cal-wd { text-align: center; font-size: .72rem; opacity: .7; padding: 2px 0 4px; }
+.cal-day { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; min-height: 52px; padding: 6px 2px; border-radius: 10px; border: 1px solid transparent; color: inherit; text-decoration: none; font-size: .92rem; }
+.cal-day.out { opacity: .35; }
+.cal-day.today { border-color: var(--accent, #86e0ae); font-weight: 700; }
+.cal-day.sel { background: var(--accent, #86e0ae); color: #04140c; font-weight: 700; }
+.cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
+.cal-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; background: #9aa; }
+.cal-dots .cal-dot { margin: 0; }
+.cal-dot.k-kesif { background: #f4a950; }
+.cal-dot.k-toplanti { background: #6fb3ff; }
+.cal-dot.k-teslim { background: #5fd18b; }
+.cal-dot.k-gorev { background: #d58cf0; }
+.cal-dot.k-diger { background: #aab4b0; }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 14px 12px; font-size: .78rem; opacity: .85; }
+.cal-actions { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
+@media (min-width: 900px) { .cal-day { min-height: 74px; } }

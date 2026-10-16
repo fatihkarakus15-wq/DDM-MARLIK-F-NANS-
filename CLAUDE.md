@@ -51,3 +51,6 @@ Banka API'si, Excel (.xlsx) ekstre, çok kullanıcılı rol, kur hedef bildiriml
 
 ## Ustalar (2026-10-14)
 - Usta = `FinContact` (`kind: SUBCONTRACTOR`, "Taşeron / usta"); harcama `contactId` ile ustaya bağlanır. `/ustalar` (`lib/finance/ustalar.ts`): usta başına ödenen (gerçekleşen), bekleyen hakediş (vadeli), işe göre kırılım, "Usta ekle". Harcama tuş takımında (proje sayfası) "Usta" seçimi + "+ Usta ekle". Defterlerdeki 20 usta adı `USTALAR`'da; `syncUstalar` ("Defterlerdeki ustaları ekle ve eşle" düğmesi) cari açar ve başlığı usta adıyla eşleşen eski harcamaları bağlar; yeni içe aktarmalar otomatik bağlar. Göç yok.
+
+## Ortak takvim (2026-10-16)
+- `/takvim` (alt çubukta sekme): bütün kullanıcıların gördüğü ortak takvim. `FinEvent` (`fin_events`; başlık, tür KESIF/TOPLANTI/TESLIM/GOREV/DIGER, gün, başlangıç/bitiş saati, yer, not, proje, kimin: boşsa "İkimiz", tamamlandı). Ay ızgarası + "Önümüzdeki 7 gün" + seçili günün programı + ekleme/düzenleme formu; yer için Google Haritalar bağlantısı. Mantık `lib/finance/events.ts`, işlemler `saveEvent/toggleEvent/deleteEvent`. Göç `007-takvim`: yayından sonra /kurulum "Veritabanını güncelle".
