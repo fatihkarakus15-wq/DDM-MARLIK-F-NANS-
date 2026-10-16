@@ -850,8 +850,10 @@ export async function saveEvent(_: ActionState, fd: FormData): Promise<ActionSta
             title: str(fd, "title", "Başlık").slice(0, 140), kind, date: day(fd, "date", "Tarih"),
             startTime: cleanTime(optStr(fd, "startTime")), endTime: cleanTime(optStr(fd, "endTime")),
             location: optStr(fd, "location")?.slice(0, 200) ?? null, note: optStr(fd, "note")?.slice(0, 1000) ?? null, projectId, assigneeId,
+            remindMin: optStr(fd, "remindMin") == null ? null : Math.max(0, Math.min(10080, Math.round(Number(optStr(fd, "remindMin"))) || 0)),
         };
-        if (id) must((await prisma.finEvent.updateMany({ where: { id, ledgerId: ledger.id }, data })).count, "Etkinlik");
+        // Tarih, saat ya da hatırlatma değişince hatırlatma yeniden kurulur
+        if (id) must((await prisma.finEvent.updateMany({ where: { id, ledgerId: ledger.id }, data: { ...data, remindedAt: null } })).count, "Etkinlik");
         else await prisma.finEvent.create({ data: { ...data, ledgerId: ledger.id, createdBy: me.id } });
         revalidatePath("/takvim");
         return id ? "Etkinlik güncellendi." : "Etkinlik eklendi.";

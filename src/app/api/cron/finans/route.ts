@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { generateRecurring } from "@/lib/finance/recurring";
 import { refreshRates } from "@/lib/finance/rates";
 import { dbState } from "@/lib/db-state";
+import { runReminders } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -24,5 +25,6 @@ export async function GET(request: NextRequest) {
     const ledgers = await prisma.finLedger.findMany({ where: { isActive: true }, select: { id: true, slug: true } });
     const generated: Record<string, number> = {};
     for (const l of ledgers) generated[l.slug] = await generateRecurring(l.id);
-    return NextResponse.json({ success: true, rates, generated });
+    const reminders = await runReminders().catch(err => ({ error: String(err) }));
+    return NextResponse.json({ success: true, rates, generated, reminders });
 }

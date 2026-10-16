@@ -598,3 +598,8 @@ input, textarea, select, [contenteditable], .adm-table, .fin-amount { -webkit-us
 .cal-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 14px 12px; font-size: .78rem; opacity: .85; }
 .cal-actions { display: flex; gap: 8px; margin: 8px 0; flex-wrap: wrap; }
 @media (min-width: 900px) { .cal-day { min-height: 74px; } }
+
+/* Bildirim düğmesi */
+.push-box { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.push-box small { opacity: .85; line-height: 1.4; }
+.push-actions { display: flex; gap: 8px; flex-wrap: wrap; }

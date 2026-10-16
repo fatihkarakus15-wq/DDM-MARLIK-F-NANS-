@@ -26,6 +26,7 @@ model AppUser {
   inviteExpires DateTime?
   createdAt    DateTime @default(now())
   passkeys     AppPasskey[]
+  pushSubs     PushSub[]
 
   @@map("app_users")
 }
@@ -221,6 +222,29 @@ model FinProjectExtra {
   @@map("fin_project_extras")
 }
 
+// Bildirimler (Web Push): sunucunun VAPID anahtarı ve her telefonun aboneliği
+model PushConfig {
+  id         String  @id
+  publicKey  String
+  privateKey String
+  lastDigest String? // Son günlük özetin tarihi (YYYY-MM-DD)
+
+  @@map("app_push_config")
+}
+
+model PushSub {
+  id        String   @id @default(cuid())
+  userId    String
+  user      AppUser  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("app_push_subs")
+}
+
 // Ortak takvim: keşif, toplantı, görev ve günlük program (bütün kullanıcılar görür)
 model FinEvent {
   id         String      @id @default(cuid())
@@ -236,6 +260,8 @@ model FinEvent {
   projectId  String?
   project    FinProject? @relation(fields: [projectId], references: [id], onDelete: SetNull)
   assigneeId String?     // AppUser.id; boşsa ikimiz
+  remindMin  Int?        // Kaç dakika önce bildirim (boşsa yok)
+  remindedAt DateTime?
   done       Boolean     @default(false)
   createdBy  String?
   createdAt  DateTime    @default(now())

@@ -5,6 +5,8 @@ import { activeLedger } from "@/lib/finance/ledger";
 import { personName } from "@/lib/finance/options";
 import { EVENT_KINDS, WEEKDAYS, monthGrid, shiftMonth } from "@/lib/finance/events";
 import { addDays, monthLabel, parseDay, todayYmd } from "@/lib/finance/dates";
+import PushToggle from "@/components/PushToggle";
+import { REMIND_OPTIONS } from "@/lib/push";
 import AdminForm, { SubmitButton } from "@/components/AdminForm";
 import { deleteEvent, saveEvent, toggleEvent } from "../actions";
 
@@ -54,6 +56,7 @@ export default async function Takvim({ searchParams }: { searchParams: Promise<{
                 <label className="adm-field"><span className="adm-label">Kimin</span><select name="assigneeId" defaultValue={e?.assigneeId ?? ""}><option value="">İkimiz</option>{users.map(u => <option key={u.id} value={u.id}>{personName(u)}</option>)}</select></label>
                 <label className="adm-field"><span className="adm-label">Proje (isteğe bağlı)</span><select name="projectId" defaultValue={e?.projectId ?? ""}><option value="">— yok —</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
             </div>
+            <label className="adm-field"><span className="adm-label">Hatırlat (bildirim)</span><select name="remindMin" defaultValue={e ? (e.remindMin ?? "") : "60"}><option value="">Hatırlatma yok</option>{REMIND_OPTIONS.map(([m, l]) => <option key={m} value={m}>{l}</option>)}</select></label>
             <label className="adm-field"><span className="adm-label">Yer / adres</span><input name="location" defaultValue={e?.location ?? ""} maxLength={200} autoComplete="off" /></label>
             <label className="adm-field"><span className="adm-label">Not</span><input name="note" defaultValue={e?.note ?? ""} maxLength={1000} autoComplete="off" /></label>
             <div className="adm-form-foot"><SubmitButton>{e ? "Kaydet" : "Takvime ekle"}</SubmitButton></div>
@@ -66,7 +69,7 @@ export default async function Takvim({ searchParams }: { searchParams: Promise<{
             <li key={e.id} className={e.done ? "done" : ""}>
                 <details className="pay-item">
                     <summary className="pay-row">
-                        <span><b><i className={`cal-dot ${k.tone}`} />{e.title}</b><small>{showDate ? `${dayTitle(e.date.toISOString().slice(0, 10))} · ` : ""}{hours(e)} · {k.label} · {who(e.assigneeId)}{e.project ? ` · ${e.project.name}` : ""}</small></span>
+                        <span><b><i className={`cal-dot ${k.tone}`} />{e.title}</b><small>{showDate ? `${dayTitle(e.date.toISOString().slice(0, 10))} · ` : ""}{hours(e)} · {k.label} · {who(e.assigneeId)}{e.remindMin != null && !e.done ? " · 🔔" : ""}{e.project ? ` · ${e.project.name}` : ""}</small></span>
                         <span className="pay-amt">{e.done && <em className="adm-badge ok">Tamam</em>}</span>
                     </summary>
                     <div className="pay-body">
@@ -90,6 +93,8 @@ export default async function Takvim({ searchParams }: { searchParams: Promise<{
                 <div><h1 className="adm-title">Takvim</h1><p className="adm-sub">Ortak takvim: keşif, toplantı ve günlük program. İkiniz de aynısını görürsünüz.</p></div>
                 <div className="adm-actions"><a className="btn btn-sm btn-gold" href="#yeni">+ Etkinlik ekle</a></div>
             </div>
+
+            <section className="adm-card"><div className="adm-card-body"><PushToggle /></div></section>
 
             <section className="adm-card">
                 <div className="adm-card-head"><h2 className="adm-card-title">Önümüzdeki 7 gün</h2><span className="adm-card-note">{upcoming.length} etkinlik</span></div>

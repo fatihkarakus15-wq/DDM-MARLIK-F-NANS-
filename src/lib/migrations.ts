@@ -52,4 +52,15 @@ export const MIGRATIONS: Migration[] = [
             `CREATE INDEX IF NOT EXISTS "fin_events_ledgerId_date_idx" ON "fin_events"("ledgerId", "date")`,
         ],
     },
+    {
+        id: "008-bildirimler",
+        statements: [
+            `ALTER TABLE "fin_events" ADD COLUMN IF NOT EXISTS "remindMin" INTEGER`,
+            `ALTER TABLE "fin_events" ADD COLUMN IF NOT EXISTS "remindedAt" TIMESTAMP(3)`,
+            `CREATE TABLE IF NOT EXISTS "app_push_config" ("id" TEXT NOT NULL PRIMARY KEY, "publicKey" TEXT NOT NULL, "privateKey" TEXT NOT NULL, "lastDigest" TEXT)`,
+            `CREATE TABLE IF NOT EXISTS "app_push_subs" ("id" TEXT NOT NULL PRIMARY KEY, "userId" TEXT NOT NULL REFERENCES "app_users"("id") ON DELETE CASCADE ON UPDATE CASCADE, "endpoint" TEXT NOT NULL, "p256dh" TEXT NOT NULL, "auth" TEXT NOT NULL, "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "app_push_subs_endpoint_key" ON "app_push_subs"("endpoint")`,
+            `CREATE INDEX IF NOT EXISTS "app_push_subs_userId_idx" ON "app_push_subs"("userId")`,
+        ],
+    },
 ];
