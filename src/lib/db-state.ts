@@ -6,6 +6,7 @@ export type DbState = { state: "empty" | "pending" | "ok"; pending: Migration[] 
 
 /** Göçler yalnızca ileri gider: bir kez "ok" görüldüyse bu sunucu örneği için tekrar sorgulanmaz (sayfa başına 2 sorgu azalır) */
 let okSeen = false;
+let lastAutoTry = 0;
 
 /** empty: hiç kurulmamış · pending: bekleyen göç var · ok: güncel */
 export async function dbState(): Promise<DbState> {
@@ -13,7 +14,18 @@ export async function dbState(): Promise<DbState> {
     const [row] = await prisma.$queryRaw<{ t: string | null }[]>`SELECT to_regclass('public.app_migrations')::text AS t`;
     if (!row?.t) return { state: "empty", pending: MIGRATIONS };
     const done = new Set((await prisma.$queryRaw<{ id: string }[]>`SELECT id FROM app_migrations`).map(r => r.id));
-    const pending = MIGRATIONS.filter(m => !done.has(m.id));
+    let pending = MIGRATIONS.filter(m => !done.has(m.id));
+    // Kurulu veritabanında bekleyen göçler (yeni sürüm yayınlandı) kendiliğinden uygulanır: uygulama kurulum ekranında takılı kalmasın.
+    // Göçler yalnızca ekleme yapar ve tek işlemdedir; hata olursa dakikada bir yeniden denenir, o sürece kurulum ekranı gösterilir.
+    if (pending.length && Date.now() - lastAutoTry > 60_000) {
+        lastAutoTry = Date.now();
+        try {
+            await runMigrations();
+            pending = [];
+        } catch (err) {
+            console.error("Otomatik göç uygulanamadı:", err);
+        }
+    }
     if (!pending.length) okSeen = true;
     return { state: pending.length ? "pending" : "ok", pending };
 }
